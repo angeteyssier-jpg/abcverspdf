@@ -1,0 +1,2766 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mise en page ABC — A4</title>
+<style>
+  :root{ --bg:#3a3936; --paper:#ffffff; --ink:#1a1a1a; --accent:#185fa5; --panel:#f5f4ef; --line:#d8d6ce; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; color:var(--ink); background:var(--bg); }
+  .mep-wrap{ display:grid; grid-template-columns:280px 1fr; min-height:100vh; }
+
+  /* ---- panneau de contrôle ---- */
+  .mep-panel{ background:var(--panel); border-right:1px solid var(--line); padding:12px; overflow-y:auto; height:100vh; position:sticky; top:0; }
+  .mep-panel h1{ font-size:15px; margin:0 0 2px; }
+  .mep-badge{ display:inline-block; font-size:12px; color:#5f5e5a; background:#ebe9e0; padding:2px 8px; border-radius:6px; margin-bottom:10px; }
+  .mep-badge b{ color:var(--accent); }
+  .mep-sec{ border:1px solid var(--line); border-radius:8px; background:#fff; padding:10px; margin-bottom:10px; }
+  .mep-sec h2{ font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:#5f5e5a; margin:0 0 8px; }
+  .mep-row{ display:flex; align-items:center; gap:8px; margin:6px 0; font-size:13px; }
+  .mep-row label{ flex:0 0 auto; }
+  .mep-row input[type=range]{ flex:1; }
+  .mep-row .val{ flex:0 0 auto; min-width:44px; text-align:right; color:var(--accent); font-weight:700; font-size:12px; }
+  textarea#mep-abc{ width:100%; height:120px; resize:vertical; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; border:1px solid var(--line); border-radius:6px; padding:6px; }
+  .mep-btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; height:36px; border:2px solid #b4b2a9; border-radius:8px; background:#fff; font-weight:700; font-size:13px; cursor:pointer; margin-top:6px; }
+  .mep-btn:hover{ background:#f0eee5; }
+  .mep-btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .mep-btn.primary:hover{ background:#1a6cbb; }
+  .mep-file{ font-size:12px; }
+  select#mep-mps{ flex:1; height:30px; border:1px solid var(--line); border-radius:6px; font-size:13px; }
+  .mep-chk{ display:flex; align-items:center; gap:6px; font-size:13px; padding:3px 0; cursor:pointer; }
+  .mep-step{ width:26px; height:26px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:16px; font-weight:700; line-height:1; cursor:pointer; color:var(--ink); }
+  .mep-step:hover{ background:#f0eee5; }
+  .mep-cell{ fill:transparent; cursor:pointer; }
+  .mep-cell:hover{ fill:rgba(24,95,165,0.10); }
+  #mep-voices{ display:flex; flex-direction:column; gap:2px; }
+  .mep-hint{ font-size:11px; color:#8a877e; line-height:1.4; }
+
+  /* ---- zone de pages ---- */
+  .mep-view{ padding:24px; overflow:auto; height:100vh; }
+  .mep-toolbar{ display:flex; align-items:center; gap:12px; color:#e8e6df; font-size:13px; margin-bottom:16px; }
+  .mep-toolbar b{ color:#fff; }
+  .mep-page{ position:relative; width:210mm; min-height:297mm; background:var(--paper);
+    margin:0 auto 24px; box-shadow:0 4px 18px rgba(0,0,0,.35); border-radius:2px; overflow:hidden; }
+  .mep-pagebody{ width:100%; }
+  .mep-svg{ display:block; }
+  .mep-svg text{ font-family:serif; }
+  .mep-folio{ position:absolute; bottom:8mm; left:0; right:0; display:flex; justify-content:space-between; align-items:baseline; box-sizing:border-box; font-size:10px; color:#8a877e; }
+  .mep-folio .ft{ font-style:italic; }
+  .mep-empty{ color:#cfcdc6; text-align:center; padding:60px 20px; font-size:14px; }
+
+  /* ---- impression ---- */
+  @page{ size:A4; margin:0; }
+  @media print{
+    body{ background:#fff; }
+    .mep-wrap{ display:block; }
+    .mep-panel{ display:none; }
+    .mep-view{ padding:0; height:auto; overflow:visible; }
+    .mep-toolbar{ display:none; }
+    .mep-page{ box-shadow:none; margin:0; border-radius:0; width:210mm; height:297mm;
+      page-break-after:always; break-after:page; }
+    .mep-page:last-child{ page-break-after:auto; break-after:auto; }
+    .mep-folio{ color:#555; }
+  }
+</style>
+</head>
+<body>
+<div class="mep-wrap">
+  <aside class="mep-panel">
+    <h1>Mise en page ABC</h1>
+    <span class="mep-badge">A4 — <b id="mep-ver">v1.13</b></span>
+
+    <div class="mep-sec">
+      <h2>Partition</h2>
+      <input type="file" id="mep-file" class="mep-file" accept=".abc,.txt,text/plain">
+      <textarea id="mep-abc" placeholder="Collez ici le texte ABC…"></textarea>
+      <button class="mep-btn" id="mep-load">Générer la mise en page</button>
+      <button class="mep-btn" id="mep-sample">Charger l'exemple (Vuelie)</button>
+      <div class="mep-row" id="mep-tune-row" style="display:none; margin-top:8px;">
+        <label>Morceau</label>
+        <select id="mep-tune" style="flex:1; height:30px; border:1px solid var(--line); border-radius:6px; font-size:13px;"></select>
+      </div>
+    </div>
+
+    <div class="mep-sec">
+      <h2>Disposition</h2>
+      <div class="mep-row"><label>Taille</label><input type="range" id="mep-scale" min="60" max="160" step="5" value="100"><span class="val" id="mep-scale-val">100%</span></div>
+      <div class="mep-row"><label>Marges</label><input type="range" id="mep-margin" min="8" max="28" step="1" value="16"><span class="val" id="mep-margin-val">16 mm</span></div>
+      <div class="mep-row"><label>Espacement notes</label>
+        <button class="mep-step" id="mep-ns-minus" type="button" title="Resserrer les notes">−</button>
+        <span class="val" id="mep-ns-val">0</span>
+        <button class="mep-step" id="mep-ns-plus" type="button" title="Aérer les notes">+</button>
+      </div>
+      <div class="mep-row"><label>Mes./système</label>
+        <select id="mep-mps">
+          <option value="0">Auto</option>
+          <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option><option value="8">8</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mep-sec">
+      <h2>Voix</h2>
+      <div id="mep-voices"></div>
+    </div>
+
+    <div class="mep-sec">
+      <h2>Affichage</h2>
+      <label class="mep-chk"><input type="checkbox" id="mep-lyrics" checked> Paroles</label>
+      <label class="mep-chk"><input type="checkbox" id="mep-chords" checked> Accords / indications</label>
+      <label class="mep-chk"><input type="checkbox" id="mep-nums"> Numéros de mesure</label>
+      <div class="mep-row" style="margin-top:8px;"><label>Espacement paroles</label>
+        <button class="mep-step" id="mep-ly-minus" type="button" title="Rapprocher">−</button>
+        <span class="val" id="mep-ly-val">0</span>
+        <button class="mep-step" id="mep-ly-plus" type="button" title="Éloigner">+</button>
+      </div>
+      <div class="mep-row"><label>Écart entre voix</label>
+        <button class="mep-step" id="mep-vg-minus" type="button" title="Rapprocher les voix">−</button>
+        <span class="val" id="mep-vg-val">10</span>
+        <button class="mep-step" id="mep-vg-plus" type="button" title="Éloigner les voix">+</button>
+      </div>
+      <div class="mep-row"><label>Écart entre systèmes</label>
+        <button class="mep-step" id="mep-sg-minus" type="button" title="Rapprocher les systèmes">−</button>
+        <span class="val" id="mep-sg-val">20</span>
+        <button class="mep-step" id="mep-sg-plus" type="button" title="Éloigner les systèmes">+</button>
+      </div>
+      <label class="mep-chk"><input type="checkbox" id="mep-justify"> Justifier les lignes sur la largeur</label>
+      <label class="mep-chk" style="margin-top:6px;"><input type="checkbox" id="mep-editbrk"> Sauts cliquables (<span style="color:#185fa5">↵</span> ligne / <span style="color:#c0392b">⤓</span> page)</label>
+      <button class="mep-btn" id="mep-resetbrk" type="button">Réinitialiser les sauts</button>
+      <p class="mep-hint">Quand « Sauts cliquables » est coché, cliquez une mesure pour faire défiler : aucun saut → saut de ligne ↵ → saut de page ⤓ → aucun.</p>
+    </div>
+
+    <button class="mep-btn primary" id="mep-print">Imprimer / PDF</button>
+    <p class="mep-hint">L'aperçu reproduit le format A4. « Imprimer » ouvre la boîte d'impression du navigateur — choisissez « Enregistrer au format PDF » pour exporter.</p>
+  </aside>
+
+  <main class="mep-view">
+    <div class="mep-toolbar"><b>Aperçu A4</b><span id="mep-count">—</span></div>
+    <div id="mep-pages"><div class="mep-empty">Importez ou collez une partition ABC pour générer la mise en page.</div></div>
+  </main>
+</div>
+<script>
+(function(){
+  const NOTES=[{label:'Do',sub:'C',n:'C'},{label:'Ré',sub:'D',n:'D'},{label:'Mi',sub:'E',n:'E'},{label:'Fa',sub:'F',n:'F'},{label:'Sol',sub:'G',n:'G'},{label:'La',sub:'A',n:'A'},{label:'Si',sub:'B',n:'B'}];
+  let nextTupletId=1; // compteur d'identifiants de n-olets (défini ici car hors de la tranche moteur réutilisée)
+  const DURATIONS=[{label:'𝅝',d:4},{label:'𝅗𝅥',d:2},{label:'♩',d:1},{label:'♪',d:0.5},{label:'♬',d:0.25},{label:'𝅘𝅥𝅰',d:0.125},{label:'𝅘𝅥𝅱',d:0.0625}];
+  const SHARP_NOTES=['F','C','G','D','A','E','B'];
+  const FLAT_NOTES=['B','E','A','D','G','C','F'];
+  const ORNAMENTS=[{code:'T',label:'tr'},{code:'M',label:'∼ (gruppetto)'},{code:'P',label:'∿ pincé'},{code:'H',label:'𝄐 point d\'orgue'},{code:'L',label:'> accent'},{code:'.',label:'• staccato'},{code:'u',label:'⋁ levé'},{code:'v',label:'⊓ tiré'},{code:'O',label:'⊕ coda'}];
+  // Boutons accord : ajoutent leur texte au champ
+  const CHORD_BTNS=['#','b','m','Maj','2','4','5','6','7','9','11','13','sus','dim','aug','add','/'];
+  const KEY_NAMES_MAJOR=['C','G','D','A','E','B','F♯','C♯'];
+  const KEY_NAMES_MAJOR_FLAT=['C','F','B♭','E♭','A♭','D♭','G♭','C♭'];
+  // Mineurs relatifs (même armure que le majeur correspondant)
+  const KEY_NAMES_MINOR=['A','E','B','F♯','C♯','G♯','D♯','A♯'];          // dièses
+  const KEY_NAMES_MINOR_FLAT=['A','D','G','C','F','B♭','E♭','A♭'];        // bémols
+
+  // ===== Multi-pistes (étape 1) =====
+  // Champs propres à une piste (chacun aliasé sur la piste active via defineProperty)
+  const TRACK_FIELDS=['measures','pieceMeter','pieceUnit','pieceKeySig','pieceClef','timeChanges','keyChanges','clefChanges','repeats','parts'];
+  const MAX_TRACKS=24;   // limite de pistes (relevee pour les imports MusicXML/GP) — modifiable librement
+  // Crée une piste vierge avec valeurs par défaut
+  // Clone profond des mesures (chaque slot devient un objet indépendant) : empêche absolument
+  // que deux pistes partagent les mêmes objets de notes (cause de paroles qui « bavent » d'une voix
+  // à l'autre). On clone aussi les maps par-mesure pour la même raison.
+  function cloneMeasures(meas){
+    if(!Array.isArray(meas))return [];
+    return meas.map(m=>Array.isArray(m)?m.map(s=>{
+      const c=Object.assign({},s);
+      if(Array.isArray(s.stack))c.stack=s.stack.map(x=>Object.assign({},x));
+      if(Array.isArray(s.verses))c.verses=s.verses.slice();
+      if(Array.isArray(s.orn))c.orn=s.orn.slice();
+      return c;
+    }):[]);
+  }
+  function cloneMap(o){return o?JSON.parse(JSON.stringify(o)):{};}
+  function makeTrack(opts){opts=opts||{};return {
+    name:opts.name||'',
+    measures:cloneMeasures(opts.measures||[]),
+    pieceMeter:opts.pieceMeter||'4/4',
+    pieceUnit:opts.pieceUnit||'1/4',
+    pieceKeySig:(opts.pieceKeySig!==undefined)?opts.pieceKeySig:0,
+    pieceClef:opts.pieceClef||'treble',
+    timeChanges:cloneMap(opts.timeChanges),
+    keyChanges:cloneMap(opts.keyChanges),
+    clefChanges:cloneMap(opts.clefChanges),
+    repeats:cloneMap(opts.repeats),
+    parts:cloneMap(opts.parts),
+    vol:(opts.vol!==undefined)?opts.vol:100,
+    mute:!!opts.mute,
+    visible:(opts.visible!==undefined)?opts.visible:true,
+    instrument:(opts.instrument!==undefined)?opts.instrument:0
+  }}
+  const state={headers:{X:'1',T:'',C:'',N:'',H:'',F:'',Z:'',P:'',W:''},tracks:[makeTrack()],activeTrack:0,sel:{m:0,s:0},octave:0,chordActive:0,tempo:80,tempoDotted:false,tempoBeatUnit:1,tempoBeatDotted:false,tempoChanges:{},breaks:{},volume:60,fullscreen:false,viewmode:true,activeTab:'notes',loop:false,scoreScale:80,lyricOffset:0,zoom:100,openedFileName:null,openedFileExt:null,viewFlags:{chords:true,text:true,lyrics:true,parts:true,measureNums:true},transposeScope:'all'};
+  // Aliasing : state.<champ> lit/écrit la piste active
+  TRACK_FIELDS.forEach(f=>{Object.defineProperty(state,f,{
+    get(){const tr=state.tracks[state.activeTrack]||state.tracks[0];return tr?tr[f]:undefined},
+    set(v){const tr=state.tracks[state.activeTrack]||state.tracks[0];if(tr)tr[f]=v},
+    enumerable:true,configurable:true
+  })});
+  function activeTrackObj(){return state.tracks[state.activeTrack]||state.tracks[0]}
+  // Lot 2 : exécute une mutation sur CHAQUE piste (state.* est aliasé sur la piste active,
+  // donc on bascule activeTrack temporairement). La mutation ne doit PAS appeler
+  // pushHistory()/render() : l'appelant le fait une seule fois après la boucle.
+  function applyToAllTracks(mutator){
+    const saved=state.activeTrack;
+    for(let i=0;i<state.tracks.length;i++){state.activeTrack=i;mutator(i);}
+    state.activeTrack=saved;
+  }
+  // Nettoie un nom pour usage de nom de fichier : retire UNIQUEMENT les caractères vraiment
+  // interdits par les systèmes de fichiers ; conserve accents, espaces, tirets, parenthèses.
+  // Espaces remplacés par "_" pour des URL/téléchargements plus propres.
+  function sanitizeFilename(name){
+    let s=String(name||'').trim();
+    // caractères interdits sur Windows (et sécurité générale) + caractères de contrôle
+    s=s.replace(/[<>:"/\\|?*\x00-\x1f]/g,'');
+    s=s.replace(/\s+/g,'_');
+    s=s.replace(/_+/g,'_');
+    s=s.replace(/^[_.]+|[_.]+$/g,'');   // pas de . ou _ en début/fin
+    if(!s)s='morceau';
+    return s.substring(0,120);
+  }
+  // Variante qui CONSERVE les espaces (retire seulement les caractères interdits).
+  function sanitizeFilenameKeepSpaces(name){
+    let s=String(name||'').trim();
+    s=s.replace(/[<>:"/\\|?*\x00-\x1f]/g,'');
+    s=s.replace(/\s+/g,' ').trim();
+    s=s.replace(/^[. ]+|[. ]+$/g,'');
+    if(!s)s='morceau';
+    return s.substring(0,120);
+  }
+  // Nom de fichier proposé : le nom du fichier ouvert s'il existe, sinon le titre (espaces conservés).
+  function proposedBaseName(){
+    if(state.openedFileName)return sanitizeFilenameKeepSpaces(state.openedFileName);
+    const title=(state.headers.T&&state.headers.T.trim().split('\n')[0])||'';
+    return title?sanitizeFilenameKeepSpaces(title):'morceau';
+  }
+
+  const history={stack:[],pos:-1,max:100};
+  // Mode d'affichage du tempo : 'q'(noire) 'qd'(noire pointée) 'e'(croche) 'ed'(croche pointée). state.tempo reste canonique en noires/min.
+  // Battue du tempo généralisée. state.tempo reste canonique en NOIRES/min.
+  // state.tempoBeatUnit = durée de la battue en noires (ronde=4, blanche=2, noire=1, croche=0.5, double=0.25)
+  // state.tempoBeatDotted = battue pointée (×1.5)
+  const TEMPO_UNITS=[{u:4,sym:'𝅝',name:'ronde'},{u:2,sym:'𝅗𝅥',name:'blanche'},{u:1,sym:'♩',name:'noire'},{u:0.5,sym:'♪',name:'croche'},{u:0.25,sym:'𝅘𝅥𝅯',name:'double-croche'}];
+  function beatUnit(){let u=state.tempoBeatUnit;if(typeof u!=='number'||!(u>0)){// migration depuis ancien modèle
+      if(state.tempoMode==='e'||state.tempoMode==='ed')u=0.5;else u=1;}
+    return u}
+  function beatDotted(){if(typeof state.tempoBeatDotted==='boolean')return state.tempoBeatDotted;return !!state.tempoDotted||state.tempoMode==='qd'||state.tempoMode==='ed'}
+  function setBeat(u,dotted){state.tempoBeatUnit=u;state.tempoBeatDotted=!!dotted;state.tempoDotted=(u===1&&dotted)}
+  function beatQuarters(u,dotted){if(u===undefined)u=beatUnit();if(dotted===undefined)dotted=beatDotted();return u*(dotted?1.5:1)}
+  // Glyphe de la battue pour l'affichage du tempo (♩, ♪, etc.) + point si pointée.
+  function beatGlyph(u,dotted){if(u===undefined)u=beatUnit();if(dotted===undefined)dotted=beatDotted();
+    let g='\u2669';// noire
+    if(u>=4)g='\uD834\uDD5D';else if(u>=2)g='\uD834\uDD5E';else if(u>=1)g='\u2669';else if(u>=0.5)g='\u266A';else g='\u266C';
+    return g+(dotted?'.':'');}
+  function tempoDisplayVal(){return Math.round(state.tempo/beatQuarters())}
+  function tempoFromDisplay(val){return val*beatQuarters()}
+  function beatSym(u,dotted){if(u===undefined)u=beatUnit();if(dotted===undefined)dotted=beatDotted();const f=TEMPO_UNITS.find(x=>Math.abs(x.u-u)<1e-9);return (f?f.sym:'♩')+(dotted?'.':'')}
+  function beatName(u,dotted){if(u===undefined)u=beatUnit();if(dotted===undefined)dotted=beatDotted();const f=TEMPO_UNITS.find(x=>Math.abs(x.u-u)<1e-9);return (f?f.name:'noire')+(dotted?' pointée':'')}
+  // Compat : Q: ABC. L'unité s'exprime en fraction de ronde = (u/4) ; pointé multiplie le numérateur par 3 et le dénominateur par 2.
+  function beatAbcFraction(u,dotted){if(u===undefined)u=beatUnit();if(dotted===undefined)dotted=beatDotted();let num=u,den=4;if(dotted){num*=3;den*=2}// simplifier
+    // num/den où num peut être fractionnaire (0.25 etc). Ramener à entiers :
+    let n=num,d=den;while(Math.abs(n-Math.round(n))>1e-9){n*=2;d*=2}n=Math.round(n);
+    function gcd(a,b){return b?gcd(b,a%b):a}const g=gcd(n,d)||1;return (n/g)+'/'+(d/g)}
+  // Depuis une fraction de ronde num/den, déduire {unit (en noires), dotted}
+  function beatFromAbc(num,den){const q=num/den*4;// durée en noires
+    for(const tu of TEMPO_UNITS){if(Math.abs(q-tu.u)<1e-6)return{unit:tu.u,dotted:false};if(Math.abs(q-tu.u*1.5)<1e-6)return{unit:tu.u,dotted:true}}
+    return{unit:q>0?q:1,dotted:false}}
+  function snapshot(){
+    const o={};for(const k in state){if(TRACK_FIELDS.indexOf(k)>=0)continue;o[k]=state[k]}
+    return JSON.stringify(o);
+  }
+  function pushHistory(){if(history.pos<history.stack.length-1)history.stack=history.stack.slice(0,history.pos+1);history.stack.push(snapshot());if(history.stack.length>history.max)history.stack.shift();history.pos=history.stack.length-1}
+  function loadFrom(snap){
+    const o=JSON.parse(snap);
+    if(!o.tracks){
+      const tr=makeTrack({measures:o.measures||[],pieceMeter:o.pieceMeter,pieceUnit:o.pieceUnit,pieceKeySig:o.pieceKeySig,pieceClef:o.pieceClef,timeChanges:o.timeChanges,keyChanges:o.keyChanges,clefChanges:o.clefChanges,repeats:o.repeats,parts:o.parts});
+      TRACK_FIELDS.forEach(f=>{delete o[f]});
+      o.tracks=[tr];o.activeTrack=0;
+    }
+    state.tracks=o.tracks.map(t=>makeTrack(t));
+    state.activeTrack=Math.max(0,Math.min((o.activeTrack||0),state.tracks.length-1));
+    for(const k in o){if(k==='tracks'||k==='activeTrack')continue;if(TRACK_FIELDS.indexOf(k)>=0)continue;state[k]=o[k]}
+  }
+  function undo(){if(history.pos>0){history.pos--;loadFrom(history.stack[history.pos]);render()}}
+  function redo(){if(history.pos<history.stack.length-1){history.pos++;loadFrom(history.stack[history.pos]);render()}}
+
+  function parseMeter(meter){if(!meter)return{num:4,den:4};if(meter==='C')return{num:4,den:4};if(meter==='C|')return{num:2,den:2};const m=meter.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);if(m)return{num:parseInt(m[1],10),den:parseInt(m[2],10)};return{num:4,den:4}}
+  function meterAt(idx){let cur=state.pieceMeter;for(let i=0;i<=idx;i++)if(state.timeChanges[i])cur=state.timeChanges[i];return cur}
+  function keyAt(idx){let cur=state.pieceKeySig;for(let i=0;i<=idx;i++)if(state.keyChanges[i]!==undefined)cur=state.keyChanges[i];return cur}
+  function clefAt(idx){let cur=state.pieceClef;for(let i=0;i<=idx;i++)if(state.clefChanges[i])cur=state.clefChanges[i];return cur}
+  // Tempo effectif (en NOIRES/min, canonique) à la mesure idx. state.tempo = tempo initial ;
+  // state.tempoChanges[mi] = nouveau tempo (noires/min) à partir de la mesure mi, jusqu'au prochain.
+  function tempoAt(idx){let cur=state.tempo;const tc=state.tempoChanges||{};for(let i=0;i<=idx;i++)if(tc[i]!==undefined)cur=tc[i];return cur}
+  function measureCapacity(meter){const{num,den}=parseMeter(meter);return num*(4/den)}
+  function effDur(t){
+    let d=t.dot?t.dur*1.5:t.dur;
+    if(t.tuplet){
+      // n-uplet : n notes (t.tuplet) occupent l'espace de `normal` figures de base.
+      // Ratio = normal/n. Pour les n-uplets standards, normal=2 (3:2, 5:2, 6:2, 7:2).
+      // Pour les exotiques (7:4, 5:4...), t.tupletNormal porte le vrai "normal".
+      // Rétro-compatibilité : si tupletNormal absent → 2.
+      const normal=(t.tupletNormal!==undefined&&t.tupletNormal>0)?t.tupletNormal:2;
+      d=d*normal/t.tuplet;
+    }
+    return d;
+  }
+  function beamGroupUnit(meter){const{num,den}=parseMeter(meter);if(den===8&&num%3===0&&num>=6)return 1.5;return 4/den}
+
+  function buildEmptyMeasure(meter){const{num,den}=parseMeter(meter);const beatDur=4/den;const slots=[];for(let i=0;i<num;i++)slots.push({type:'rest',dur:beatDur,dot:false});return slots}
+  function rebuildMeasures(){const count=Math.max(state.measures.length,9);state.measures=[];state.timeChanges={};state.keyChanges={};state.clefChanges={};state.repeats={};state.parts={};state.tempoChanges={};state.breaks={};for(let i=0;i<count;i++)state.measures.push(buildEmptyMeasure(state.pieceMeter));state.sel={m:0,s:0}}
+
+  function splitDurationByBeat(offset,amount,beat){
+    const eps=1e-6;const out=[];let cur=+offset.toFixed(6);let rem=+amount.toFixed(6);
+    // Sous-valeurs disponibles, incluant la quadruple croche (1/64 = 0.0625).
+    const SUBS=[4,2,1,0.5,0.25,0.125,0.0625].filter(u=>u<=beat/2+eps);
+    // Décompose une durée en figures (par défaut du plus GROS au plus petit) ;
+    // si ascending=true, on renvoie du plus PETIT au plus gros (pour la levée avant le temps).
+    function decompose(d,ascending){
+      const pieces=[];let leftover=+d.toFixed(6);
+      for(const u of SUBS)while(leftover>=u-eps){pieces.push({dur:u,dot:false});leftover=+(leftover-u).toFixed(6)}
+      if(ascending)pieces.reverse();
+      return pieces;
+    }
+    // 1) Combler jusqu'au prochain temps (levée) : silences du plus court au plus long.
+    const distToBeat=((cur%beat)===0)?0:(beat-(cur%beat));
+    if(distToBeat>eps&&rem>eps){
+      const toFill=Math.min(distToBeat,rem);
+      decompose(toFill,/*ascending*/true).forEach(p=>out.push(p));
+      cur=+(cur+toFill).toFixed(6);rem=+(rem-toFill).toFixed(6);
+    }
+    // 2) Temps entiers
+    while(rem>=beat-eps){out.push({dur:(beat===1.5)?1:beat,dot:(beat===1.5)});rem=+(rem-beat).toFixed(6);cur=+(cur+beat).toFixed(6)}
+    // 3) Reliquat après les temps : du plus gros au plus petit (lecture naturelle vers la barre).
+    if(rem>eps){decompose(rem,/*ascending*/false).forEach(p=>out.push(p))}
+    return out;
+  }
+  function rebalanceMeasure(m,anchorIdx,oldEffDur){const meter=meterAt(m);const{den}=parseMeter(meter);const beat=4/den;const cap=measureCapacity(meter);const meas=state.measures[m];const anchor=meas[anchorIdx];let newDur=effDur(anchor);let beforeUsed=0;for(let i=0;i<anchorIdx;i++)beforeUsed+=effDur(meas[i]);if(beforeUsed+newDur>cap+1e-6){const fits=cap-beforeUsed;const overflow=newDur-fits;anchor.tieToNext=true;const fitsPieces=splitDurationByBeat(beforeUsed,fits,beat);if(fitsPieces.length>0){anchor.dur=fitsPieces[0].dur;anchor.dot=fitsPieces[0].dot;const extras=fitsPieces.slice(1).map(p=>{const c=Object.assign({},anchor,{dur:p.dur,dot:p.dot});c.tieToNext=true;return c});state.measures[m]=meas.slice(0,anchorIdx+1).concat(extras)}const nextM=m+1;if(nextM>=state.measures.length)state.measures.push(buildEmptyMeasure(meterAt(m)));const contPieces=splitDurationByBeat(0,overflow,4/parseMeter(meterAt(nextM)).den);const contSlots=contPieces.map((p,i)=>{const c=Object.assign({},anchor,{dur:p.dur,dot:p.dot});delete c.tieToNext;if(i<contPieces.length-1)c.tieToNext=true;return c});_consumeFromHead(nextM,overflow,contSlots);return}const delta=+(newDur-oldEffDur).toFixed(6);const eps=1e-6;if(Math.abs(delta)<eps)return;if(delta<0){const freeAmount=-delta;const offsetAfterAnchor=beforeUsed+newDur;const pieces=splitDurationByBeat(offsetAfterAnchor,freeAmount,beat);const newSlots=pieces.map(p=>{const copy=Object.assign({},anchor,{dur:p.dur,dot:p.dot});delete copy.tieToNext;return copy});const tail=meas.slice(anchorIdx+1);state.measures[m]=meas.slice(0,anchorIdx+1).concat(newSlots,tail);truncateMeasureToCapacity(m,cap);return}let need=delta;let cursor=anchorIdx+1;while(need>eps&&cursor<meas.length){const slot=meas[cursor];const dur=effDur(slot);if(dur<=need+eps){need=+(need-dur).toFixed(6);meas.splice(cursor,1)}else{const remaining=+(dur-need).toFixed(6);let off=0;for(let i=0;i<cursor;i++)off+=effDur(meas[i]);const pieces=splitDurationByBeat(off+need,remaining,beat);const newCopies=pieces.map(p=>Object.assign({},slot,{dur:p.dur,dot:p.dot}));meas.splice(cursor,1,...newCopies);need=0}}truncateMeasureToCapacity(m,cap)}
+  function _consumeFromHead(m,amount,replacementSlots){const meter=meterAt(m);const beat=4/parseMeter(meter).den;const meas=state.measures[m];const eps=1e-6;let need=amount;let cursor=0;while(need>eps&&cursor<meas.length){const slot=meas[cursor];const dur=effDur(slot);if(dur<=need+eps){need=+(need-dur).toFixed(6);meas.splice(cursor,1)}else{const remaining=+(dur-need).toFixed(6);const off=need;const pieces=splitDurationByBeat(off,remaining,beat);const newCopies=pieces.map(p=>Object.assign({},slot,{dur:p.dur,dot:p.dot}));meas.splice(cursor,1,...newCopies);need=0}}state.measures[m]=replacementSlots.concat(state.measures[m]);truncateMeasureToCapacity(m,measureCapacity(meter))}
+  function truncateMeasureToCapacity(m,cap){const eps=1e-6;const meas=state.measures[m];let used=0;for(let i=0;i<meas.length;i++){const d=effDur(meas[i]);if(used+d>cap+eps){state.measures[m]=meas.slice(0,i);const meter=meterAt(m);const{den}=parseMeter(meter);const beat=4/den;const tail=splitDurationByBeat(used,cap-used,beat).map(p=>({type:'rest',dur:p.dur,dot:p.dot}));state.measures[m]=state.measures[m].concat(tail);return}used+=d}if(used<cap-eps){const meter=meterAt(m);const{den}=parseMeter(meter);const beat=4/den;const tail=splitDurationByBeat(used,cap-used,beat).map(p=>({type:'rest',dur:p.dur,dot:p.dot}));state.measures[m]=meas.concat(tail)}}
+
+  function unitMultiplier(){const m=state.pieceUnit.match(/^\s*1\s*\/\s*(\d+)\s*$/);if(!m)return 1;const denom=parseInt(m[1],10);return denom/4}
+  function effDToAbc(d){const v=d*unitMultiplier();const e=1e-9;if(Math.abs(v-1)<e)return'';if(Math.abs(v-2)<e)return'2';if(Math.abs(v-3)<e)return'3';if(Math.abs(v-4)<e)return'4';if(Math.abs(v-6)<e)return'6';if(Math.abs(v-8)<e)return'8';if(Math.abs(v-0.5)<e)return'/2';if(Math.abs(v-0.25)<e)return'/4';if(Math.abs(v-0.125)<e)return'/8';if(Math.abs(v-0.0625)<e)return'/16';if(Math.abs(v-1.5)<e)return'3/2';if(Math.abs(v-0.75)<e)return'3/4';if(Math.abs(v-0.375)<e)return'3/8';if(Math.abs(v-0.1875)<e)return'3/16';const denom=32;const numer=Math.round(v*denom);function gcd(a,b){return b?gcd(b,a%b):a}const g=gcd(numer,denom);const a=numer/g,b=denom/g;if(b===1)return String(a);if(a===1)return'/'+b;return a+'/'+b}
+  function nominalDur(t){return t.dot?t.dur*1.5:t.dur}
+  function noteToken(note,octave,acc){let s=acc||'';let n=note;if(octave>=1)n=n.toLowerCase();s+=n;if(octave>=2)s+="'".repeat(octave-1);else if(octave<=-1)s+=",".repeat(-octave);return s}
+  function slotStr(t){let s='';if(t.chord)s+='"'+t.chord+'"';if(t.text)s+='"^'+t.text+'"';if(t.orn&&t.orn.length)t.orn.forEach(o=>{if(o==='~')s+='~';else if('TMPHLRuv'.includes(o))s+=o;else if(o==='.')s+='.';else s+='!'+o+'!'});const durStr=effDToAbc(nominalDur(t));if(t.type==='note'){if(t.stack&&t.stack.length){s+='['+noteToken(t.note,t.octave,t.acc||'')+durStr;t.stack.forEach(x=>{s+=noteToken(x.note,x.octave,x.acc||'')+durStr});s+=']'}else{s+=noteToken(t.note,t.octave,t.acc||'')+durStr}}else{s+='z'+durStr}if(t.tieToNext)s+='-';return s}
+  function keyAbc(sig){if(sig===0)return'C';if(sig>0)return['C','G','D','A','E','B','F#','C#'][sig];return['C','F','Bb','Eb','Ab','Db','Gb','Cb'][-sig]}
+  function clefAbcSuffix(c){if(c==='bass')return' clef=bass';if(c==='treble8')return' clef=treble-8';if(c==='alto')return' clef=alto';if(c==='tenor')return' clef=tenor';return''}
+  function clefHumanLabel(c){if(c==='bass')return'Fa';if(c==='treble8')return'Sol-8';if(c==='alto')return'Ut 3 (alto)';if(c==='tenor')return'Ut 4 (ténor)';return'Sol'}
+  // Décode un jeton de clé ABC (valeur de clef=…) vers notre code interne. def=valeur si non reconnu.
+  function clefFromAbcToken(cc,def){cc=(cc||'').toLowerCase();
+    if(cc.indexOf('bass')>=0||cc==='f')return'bass';
+    if(cc.indexOf('treble-8')>=0||cc.indexOf('treble_8')>=0||cc==='treble8')return'treble8';
+    if(cc==='alto'||cc==='c'||cc==='alto3')return'alto';
+    if(cc==='tenor'||cc==='alto4')return'tenor';
+    if(cc.indexOf('treble')>=0)return'treble';
+    return def;}
+  // Code interne → nom de clé ABC pour l'en-tête V:
+  function clefToAbcName(c){return c==='bass'?'bass':c==='treble8'?'treble-8':c==='alto'?'alto':c==='tenor'?'tenor':'treble'}
+  function keyHumanLabel(sig){if(sig===0)return'C maj : 0';if(sig>0)return KEY_NAMES_MAJOR[sig]+' maj : '+sig+' ♯';return KEY_NAMES_MAJOR_FLAT[-sig]+' maj : '+Math.abs(sig)+' ♭'}
+  // Étiquette « X maj / Y min » avec le mineur relatif et le nombre d'altérations
+  function keyMajMinLabel(sig){
+    const maj=(sig>=0)?KEY_NAMES_MAJOR[sig]:KEY_NAMES_MAJOR_FLAT[-sig];
+    const min=(sig>=0)?KEY_NAMES_MINOR[sig]:KEY_NAMES_MINOR_FLAT[-sig];
+    const acc=(sig===0)?'0':(sig>0?sig+' ♯':Math.abs(sig)+' ♭');
+    return maj+' maj / '+min+' min ('+acc+')';
+  }
+  function cleanupAccidentals(){
+    state.measures.forEach((meas,mi)=>{
+      const sig=keyAt(mi);
+      meas.forEach((slot,si)=>{
+        if(slot.type!=='note')return;
+        if(!slot.acc)return;
+        // Chercher l'alteration explicite anterieure dans la mesure sur meme note+octave.
+        // Important : inspecter AUSSI les notes empilees des accords anterieurs (et non les seules
+        // tetes), car une alteration portee par une note d'accord cree un contexte (altération
+        // cachée) pour les notes suivantes de meme hauteur — y compris une tete d'accord.
+        let priorAcc=null;
+        for(let k=si-1;k>=0&&priorAcc===null;k--){
+          const p=meas[k];
+          if(p.type!=='note')continue;
+          if(p.note===slot.note&&p.octave===slot.octave&&p.acc){priorAcc=p.acc;break}
+          if(p.stack&&p.stack.length){
+            for(const sn of p.stack){
+              if(sn.note===slot.note&&sn.octave===slot.octave&&sn.acc){priorAcc=sn.acc;break}
+            }
+          }
+        }
+        // Si une alteration anterieure existe, le contexte est cette alteration (pas l'armure)
+        // Le slot courant doit garder son acc si different de ce contexte.
+        if(priorAcc!==null){
+          if(slot.acc===priorAcc)delete slot.acc;
+          // Sinon : on garde l'acc explicite pour annuler/changer le contexte
+          return;
+        }
+        // Pas d'alteration anterieure : comparer a l'armure
+        // ^ redondant en armure diese
+        if(sig>0&&slot.acc==='^'&&SHARP_NOTES.slice(0,sig).includes(slot.note)){delete slot.acc;return}
+        // _ redondant en armure bemol
+        if(sig<0&&slot.acc==='_'&&FLAT_NOTES.slice(0,-sig).includes(slot.note)){delete slot.acc;return}
+        // = redondant : la note n'est pas alteree par l'armure
+        if(slot.acc==='='){
+          const altByKey=(sig>0&&SHARP_NOTES.slice(0,sig).includes(slot.note))||(sig<0&&FLAT_NOTES.slice(0,-sig).includes(slot.note));
+          if(!altByKey)delete slot.acc;
+        }
+      })
+    })
+  }
+  // Geler les alterations effectives a partir d'un index de mesure (utilise avant un changement d'armure)
+  // newSigAtStart : nouvelle armure qui s'appliquera a partir de startMi (pour poser un becarre si necessaire)
+  function freezeAccidentalsFrom(startMi,newSigAtStart){
+    for(let mi=startMi;mi<state.measures.length;mi++){
+      const meas=state.measures[mi];const sig=keyAt(mi);
+      // Si une armure changeait deja a une mesure ulterieure, elle restera. Sinon on utilise newSig.
+      let effSig=sig;
+      if(mi===startMi)effSig=sig;
+      meas.forEach((slot,si)=>{
+        if(slot.type!=='note')return;
+        // Alteration effective dans l'ancienne armure
+        const oldEff=effectiveAcc(meas,si,sig);
+        // Determiner la future armure pour cette mesure (apres changement)
+        let futSig=newSigAtStart;
+        // Si une autre armure change avant cette mesure, on ne devrait pas surecrire
+        // Simplification : on prend newSigAtStart pour toutes les mesures >= startMi
+        // (les keyChanges entre temps seront gerees ailleurs)
+        // Alteration que donnerait la nouvelle armure pour cette note (sans acc explicite)
+        let futKeyAcc='';
+        if(futSig>0&&SHARP_NOTES.slice(0,futSig).includes(slot.note))futKeyAcc='^';
+        else if(futSig<0&&FLAT_NOTES.slice(0,-futSig).includes(slot.note))futKeyAcc='_';
+        // On veut que la note conserve oldEff
+        // Si oldEff === futKeyAcc : laisser sans acc (la nouvelle armure le donnera)
+        // Sinon : poser un acc explicite (oldEff ou '=' si oldEff est vide)
+        if(oldEff===futKeyAcc)slot.acc='';
+        else slot.acc=oldEff||'=';
+      });
+    }
+  }
+  function disarmKey(){
+    // Geler les alterations effectives (armure + heritage de mesure) avant de modifier
+    const frozen=state.measures.map((meas,mi)=>{
+      const sig=keyAt(mi);
+      return meas.map((slot,si)=>{
+        if(slot.type!=='note')return null;
+        return effectiveAcc(meas,si,sig);
+      });
+    });
+    // Appliquer les alterations figees
+    state.measures.forEach((meas,mi)=>{
+      meas.forEach((slot,si)=>{
+        if(slot.type!=='note')return;
+        const eff=frozen[mi][si];
+        slot.acc=eff||'';
+      });
+    });
+    // Reset armure
+    state.pieceKeySig=0;state.keyChanges={};
+    // Nettoyer les acc redondants (en Do majeur, tout `=` superflu disparait)
+    cleanupAccidentals();
+  }
+
+  const NOTE_NAMES=['C','C','D','D','E','F','F','G','G','A','A','B'];
+  const NOTE_ACCS=['','^','','^','','','^','','^','','^',''];
+  const NOTE_NAMES_FLAT=['C','D','D','E','E','F','G','G','A','A','B','B'];
+  const NOTE_ACCS_FLAT=['','_','','_','','','_','','_','','_',''];
+  function midiToNote(midi,preferFlats){const oct=Math.floor(midi/12)-5;const pc=((midi%12)+12)%12;const names=preferFlats?NOTE_NAMES_FLAT:NOTE_NAMES;const accs=preferFlats?NOTE_ACCS_FLAT:NOTE_ACCS;return{note:names[pc],octave:oct,acc:accs[pc]}}
+  function midiOfSlot(slot,sig){const baseSemi={C:0,D:2,E:4,F:5,G:7,A:9,B:11}[slot.note];let midi=60+baseSemi+slot.octave*12;if(slot.acc==='^')midi+=1;else if(slot.acc==='_')midi-=1;else if(slot.acc==='='){}else{if(sig>0&&SHARP_NOTES.slice(0,sig).includes(slot.note))midi+=1;else if(sig<0&&FLAT_NOTES.slice(0,-sig).includes(slot.note))midi-=1}return midi}
+  // Altération effective d'un slot en tenant compte de l'héritage dans la mesure
+  function effectiveAcc(meas,slotIdx,keySig){const t=meas[slotIdx];if(!t||t.type!=='note')return '';if(t.acc)return t.acc;for(let k=slotIdx-1;k>=0;k--){const s=meas[k];if(s.type==='note'&&s.note===t.note&&s.octave===t.octave&&s.acc)return s.acc}if(keySig>0&&SHARP_NOTES.slice(0,keySig).includes(t.note))return '^';if(keySig<0&&FLAT_NOTES.slice(0,-keySig).includes(t.note))return '_';return ''}
+  // Altération que l'armure `sig` applique d'office à une lettre (en demi-tons : +1, -1, 0)
+  function keyAccVal(letter,sig){
+    if(sig>0&&SHARP_NOTES.slice(0,sig).includes(letter))return 1;
+    if(sig<0&&FLAT_NOTES.slice(0,-sig).includes(letter))return -1;
+    return 0;
+  }
+  // Orthographe canonique d'une classe de hauteur (0..11) sous l'armure `sig`.
+  // Renvoie {note, acc} où acc∈{'', '^', '_', '='} ; le son est garanti par construction.
+  const NAT_SEMI={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+  const LETTERS=['C','D','E','F','G','A','B'];
+  function spellPitchClass(pc,sig){
+    pc=((pc%12)+12)%12;
+    // 1) Couverte par l'armure → plain (pas d'altération écrite)
+    for(const L of LETTERS){const ap=((NAT_SEMI[L]+keyAccVal(L,sig))%12+12)%12;if(ap===pc)return{note:L,acc:''};}
+    // 2) Note naturelle qu'une armure altère → bécarre explicite
+    for(const L of LETTERS){if(NAT_SEMI[L]%12===pc&&keyAccVal(L,sig)!==0)return{note:L,acc:'='};}
+    // 3) Touche noire non couverte → ♭ si armure de bémols (ou neutre), sinon ♯
+    if(sig<0){for(const L of LETTERS){if(((NAT_SEMI[L]-1)%12+12)%12===pc)return{note:L,acc:'_'};}}
+    for(const L of LETTERS){if((NAT_SEMI[L]+1)%12===pc)return{note:L,acc:'^'};}
+    // filet de sécurité (ne devrait pas arriver)
+    return{note:'C',acc:'='};
+  }
+  // Orthographe d'une note de classe `pc`, en PRÉSERVANT si possible la lettre d'origine `origLetter`.
+  // Règle : si l'armure couvre `pc` via une lettre altérée (ex. Si sous armure de bémols), on adopte
+  // cette lettre (absorption, ex. La# → Si). Sinon on garde la lettre d'origine avec l'altération
+  // écrite qui redonne le bon son (ex. retour en Do d'un Si♭ → reste Si♭, pas La#).
+  function spellPitchKeepLetter(pc,sig,origLetter){
+    pc=((pc%12)+12)%12;
+    for(const L of LETTERS){const ap=((NAT_SEMI[L]+keyAccVal(L,sig))%12+12)%12;if(ap===pc&&keyAccVal(L,sig)!==0)return{note:L,acc:''};}
+    for(const L of LETTERS){if(NAT_SEMI[L]%12===pc&&keyAccVal(L,sig)===0)return{note:L,acc:''};}
+    if(origLetter){
+      const base=NAT_SEMI[origLetter];
+      const diff=((pc-base)%12+12)%12;
+      if(diff===0)return{note:origLetter,acc:(keyAccVal(origLetter,sig)!==0?'=':'')};
+      if(diff===1)return{note:origLetter,acc:'^'};
+      if(diff===11)return{note:origLetter,acc:'_'};
+    }
+    return spellPitchClass(pc,sig);
+  }
+  // Réécrit une note (et ses notes empilées) pour l'armure `newSig` en CONSERVANT le son.
+  function respellSlotForKey(slot,oldSig,measForCtx,idxForCtx,newSig){
+    // hauteur sonore réelle dans l'ancien contexte
+    const oldEff=(idxForCtx!=null&&measForCtx)?effectiveAcc(measForCtx,idxForCtx,oldSig):(slot.acc||(keyAccVal(slot.note,oldSig)?(keyAccVal(slot.note,oldSig)>0?'^':'_'):''));
+    const midi=midiOfNote(slot.note,slot.octave,oldEff,oldSig);
+    const pc=((midi%12)+12)%12;
+    const sp=spellPitchClass(pc,newSig);
+    // recalculer l'octave pour conserver exactement le même MIDI
+    const effNew=(sp.acc==='^')?1:(sp.acc==='_')?-1:(sp.acc==='=')?0:keyAccVal(sp.note,newSig);
+    const baseNoOct=60+NAT_SEMI[sp.note]+effNew;
+    const oct=Math.round((midi-baseNoOct)/12);
+    slot.note=sp.note;slot.octave=oct;
+    if(sp.acc)slot.acc=sp.acc;else delete slot.acc;
+  }
+  // Réécrit toutes les notes des mesures [fromM..toM] pour la nouvelle armure, à son constant.
+  function respellRangeForKey(fromM,toM,newSig){
+    for(let mi=fromM;mi<=toM&&mi<state.measures.length;mi++){
+      const meas=state.measures[mi];const oldSig=keyAt(mi);
+      // On fige d'abord les altérations effectives héritées (snapshot) pour ne pas être pollué
+      // par les réécritures successives dans la même mesure.
+      const effs=meas.map((s,i)=>s.type==='note'?effectiveAcc(meas,i,oldSig):'');
+      meas.forEach((slot,si)=>{
+        if(slot.type!=='note')return;
+        // note principale
+        const midiMain=midiOfNote(slot.note,slot.octave,effs[si],oldSig);
+        const spMain=spellPitchKeepLetter(((midiMain%12)+12)%12,newSig,slot.note);
+        const effNewMain=(spMain.acc==='^')?1:(spMain.acc==='_')?-1:(spMain.acc==='=')?0:keyAccVal(spMain.note,newSig);
+        slot.octave=Math.round((midiMain-(60+NAT_SEMI[spMain.note]+effNewMain))/12);
+        slot.note=spMain.note;
+        if(spMain.acc)slot.acc=spMain.acc;else delete slot.acc;
+        // notes empilées (accord)
+        if(slot.stack&&slot.stack.length){
+          slot.stack.forEach(x=>{
+            const xEff=x.acc||(keyAccVal(x.note,oldSig)?(keyAccVal(x.note,oldSig)>0?'^':'_'):'');
+            const xMidi=midiOfNote(x.note,x.octave,xEff,oldSig);
+            const sp=spellPitchKeepLetter(((xMidi%12)+12)%12,newSig,x.note);
+            const en=(sp.acc==='^')?1:(sp.acc==='_')?-1:(sp.acc==='=')?0:keyAccVal(sp.note,newSig);
+            x.octave=Math.round((xMidi-(60+NAT_SEMI[sp.note]+en))/12);
+            x.note=sp.note;
+            if(sp.acc)x.acc=sp.acc;else delete x.acc;
+          });
+        }
+      });
+    }
+  }
+  // Altération à dessiner pour un slot (notation : afficher seulement si différente du contexte courant)
+  // Convention : une note sans acc hérite de la dernière altération de même (note,octave) dans la mesure,
+  // ou de l'armure sinon. On affiche acc uniquement s'il diffère de cet héritage.
+  function accToDrawFor(meas,slotIdx,keySig){const t=meas[slotIdx];if(!t||t.type!=='note')return '';// Note sans acc explicite : rien à dessiner (elle hérite simplement)
+  if(!t.acc)return '';// Note avec acc explicite : afficher si différent du contexte
+  let priorAcc=null;for(let k=slotIdx-1;k>=0;k--){const s=meas[k];if(s.type==='note'&&s.note===t.note&&s.octave===t.octave&&s.acc){priorAcc=s.acc;break}}let keyAcc='';if(keySig>0&&SHARP_NOTES.slice(0,keySig).includes(t.note))keyAcc='^';else if(keySig<0&&FLAT_NOTES.slice(0,-keySig).includes(t.note))keyAcc='_';const ctx=(priorAcc!==null)?priorAcc:keyAcc;if(t.acc===ctx)return '';return t.acc}
+  function transposePiece(semitones){
+    // Choix simple : monter -> dieses, descendre -> bemols (ignore l'armure)
+    const preferFlats=(semitones<0);
+    // Etape 1 : figer toutes les alterations effectives (tête ET notes d'accord).
+    // Règle des altérations cachées : une altération posée sur N'IMPORTE quelle note (tête ou
+    // note d'accord) se propage à toutes les notes suivantes de même nom+octave jusqu'à la barre.
+    // On parcourt donc chaque mesure dans l'ordre en tenant une mémoire (note_octave -> altération
+    // effective), alimentée par toutes les notes explicitement altérées, têtes comme empilées.
+    state.measures.forEach((meas,mi)=>{
+      const sig=keyAt(mi);
+      const keyAccForNote=(name)=>{
+        if(sig>0&&SHARP_NOTES.slice(0,sig).includes(name))return '^';
+        if(sig<0&&FLAT_NOTES.slice(0,-sig).includes(name))return '_';
+        return '';
+      };
+      const memo={}; // note+'_'+octave -> altération effective courante dans la mesure
+      const freezeOne=(o)=>{
+        const key=o.note+'_'+o.octave;
+        let eff;
+        if(o.acc!==undefined&&o.acc!==''){
+          // altération explicite écrite : elle s'applique et devient le nouveau contexte
+          eff=o.acc;
+        } else if(memo[key]!==undefined){
+          // altération cachée héritée d'une note antérieure de même hauteur dans la mesure
+          eff=memo[key];
+        } else {
+          // sinon : altération de l'armure pour ce nom de note
+          eff=keyAccForNote(o.note);
+        }
+        memo[key]=eff;       // mémoriser pour les notes suivantes
+        o.acc=eff||'';       // figer l'altération effective absolue
+      };
+      meas.forEach((slot)=>{
+        if(slot.type!=='note')return;
+        // L'ordre intra-temps : la tête puis les notes empilées (elles partagent le même instant ;
+        // l'altération d'une note d'accord vaut aussi pour les notes suivantes de même hauteur).
+        freezeOne(slot);
+        if(slot.stack&&slot.stack.length)slot.stack.forEach(freezeOne);
+      });
+    });
+    // Etape 2-3 : transposer chaque note (en lisant uniquement slot.acc, plus l'armure)
+    const baseSemi={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+    const transOne=(o)=>{
+      let oldMidi=60+baseSemi[o.note]+o.octave*12;
+      if(o.acc==='^')oldMidi+=1;else if(o.acc==='_')oldMidi-=1;
+      const out=midiToNote(oldMidi+semitones,preferFlats);
+      o.note=out.note;o.octave=out.octave;o.acc=out.acc;
+    };
+    state.measures.forEach((meas)=>{
+      meas.forEach((slot)=>{
+        if(slot.type!=='note')return;
+        transOne(slot);
+        if(slot.stack&&slot.stack.length)slot.stack.forEach(transOne);
+      });
+    });
+    // Etape 4 : ajuster slot.acc pour que chaque note conserve sa hauteur MIDI
+    // en presence de l'armure ET de l'heritage d'alterations dans la mesure.
+    // Apres l'etape 2-3, slot.acc represente l'alteration absolue voulue (^/_/'' selon midiToNote).
+    // On doit la traduire en alteration explicite a afficher, en tenant compte du contexte de mesure.
+    state.measures.forEach((meas,mi)=>{
+      const sig=keyAt(mi);
+      // Calculer l'alteration de l'armure pour chaque nom de note
+      const keyAccForNote=(name)=>{
+        if(sig>0&&SHARP_NOTES.slice(0,sig).includes(name))return '^';
+        if(sig<0&&FLAT_NOTES.slice(0,-sig).includes(name))return '_';
+        return '';
+      };
+      // Memoire : derniere alteration effective par (note,octave) dans la mesure
+      const memo={};
+      const resolveAcc=(o)=>{
+        const key=o.note+'_'+o.octave;
+        const wantAcc=o.acc||'';
+        const ctx=(memo[key]!==undefined)?memo[key]:keyAccForNote(o.note);
+        if(wantAcc===ctx){ o.acc=''; }
+        else if(wantAcc===''&&ctx!==''){ o.acc='='; }
+        else { o.acc=wantAcc; }
+        memo[key]=wantAcc;
+      };
+      meas.forEach((slot,si)=>{
+        if(slot.type!=='note')return;
+        resolveAcc(slot);
+        // Les notes empilées partagent le même contexte de mesure (même temps) : on les résout
+        // juste après la tête, dans l'ordre, en alimentant la même mémoire d'altérations.
+        if(slot.stack&&slot.stack.length)slot.stack.forEach(resolveAcc);
+      });
+    });
+    // Etape 5 : nettoyage standard (au cas ou)
+    cleanupAccidentals();
+  }
+
+  function buildBarSeparator(prevMi,mi){const prevEnd=(prevMi>=0)&&state.repeats[prevMi]?.end;const thisStart=state.repeats[mi]?.start;if(prevEnd&&thisStart)return':|:';if(prevEnd)return':|';if(thisStart)return'|:';if(mi===0)return'';return'|'}
+  function buildInlineFor(mi){const parts=[];if(mi===0)return'';if(state.tempoChanges&&state.tempoChanges[mi]!==undefined){parts.push('[Q:'+beatAbcFraction()+'='+Math.round(state.tempoChanges[mi]/beatQuarters())+']')}if(state.timeChanges[mi])parts.push('[M:'+state.timeChanges[mi]+']');const keyChange=state.keyChanges[mi];const clefChange=state.clefChanges[mi];if(keyChange!==undefined||clefChange){const sig=keyChange!==undefined?keyChange:keyAt(mi);const cl=clefChange?clefChange:clefAt(mi);let inner='K:'+keyAbc(sig);if(cl&&cl!=='treble')inner+=clefAbcSuffix(cl);parts.push('['+inner+']')}return parts.join('')}
+  function buildVoltaFor(mi){const r=state.repeats[mi];if(!r||!r.volta)return'';return'['+r.volta}
+
+  // Construit le corps ABC pour la voix courante (lit la piste active via les alias state.*)
+  function buildVoiceBody(){
+    let body='';
+    // Suivi du slur de phrasé À TRAVERS les mesures : on garde la dernière note rencontrée
+    // (toutes mesures confondues) pour décider de l'ouverture/fermeture des parenthèses.
+    let slurActive=false;     // un slur ABC '(' est-il ouvert et pas encore fermé ?
+    let prevNote=null;        // dernière note émise (cross-mesure)
+    state.measures.forEach((m,mi)=>{
+      if(state.parts&&state.parts[mi]){if(body&&!body.endsWith('\n'))body+='\n';body+='P:'+state.parts[mi]+'\n'}
+      body+=buildBarSeparator(mi-1,mi);
+      body+=buildInlineFor(mi);
+      body+=buildVoltaFor(mi);
+      const groups=computeBeamGroups(m,meterAt(mi));
+      const gOf={};groups.forEach((g,gi)=>{g.forEach((idx)=>{gOf[idx]={gi}})});
+      let lastTid=null;
+      m.forEach((t,si)=>{
+        if(t.tuplet&&t.tupletId!==lastTid){
+          // Compter le nombre de notes du groupe (count) pour la forme complète (n:normal:count)
+          let cnt=0;for(let k=si;k<m.length&&m[k].tupletId===t.tupletId;k++)cnt++;
+          const normal=(t.tupletNormal!==undefined&&t.tupletNormal>0)?t.tupletNormal:2;
+          // Forme courte (n) si ratio standard n:2 et count=n ; sinon forme complète (n:normal:count)
+          if(normal===2&&cnt===t.tuplet)body+='('+t.tuplet;
+          else body+='('+t.tuplet+':'+normal+':'+cnt;
+          lastTid=t.tupletId;
+        }
+        if(!t.tuplet)lastTid=null;
+        // --- Slur de phrasé ---
+        // Ouvre '(' AVANT une note qui démarre une chaîne de slur (et qu'aucune n'est ouverte).
+        // Ferme ')' APRÈS la note qui termine la chaîne (la note précédente avait slurToNext,
+        // mais celle-ci ne l'a pas → fin du slur).
+        if(t.type==='note'){
+          const prevHadSlur=prevNote&&prevNote.slurToNext;
+          if(t.slurToNext&&!slurActive&&!prevHadSlur){ body+='('; slurActive=true; }
+        }
+        body+=slotStr(t);
+        if(t.type==='note'){
+          // Fin de chaîne : un slur est ouvert, et cette note ne continue pas (pas de slurToNext)
+          if(slurActive&&!t.slurToNext){ body+=')'; slurActive=false; }
+          prevNote=t;
+        }
+        const isLast=(si===m.length-1);if(isLast)return;
+        const he=gOf[si];const ne=gOf[si+1];const inSame=he&&ne&&he.gi===ne.gi;
+        if(!inSame)body+=' ';
+      });
+      // Sauts de mise en page après cette mesure : $ = fin de ligne, %%newpage = fin de page.
+      const br=state.breaks&&state.breaks[mi];
+      if(br){
+        // fermer la barre de mesure courante avant le saut
+        if(br.page){body+=' |\n%%newpage\n';}
+        else if(br.line){body+=' $\n';}
+      }
+    });
+    // Sécurité : si un slur reste ouvert en fin de voix, le fermer pour ne pas laisser de '(' orphelin
+    if(slurActive)body+=')';
+    const li=state.measures.length-1;
+    if(state.repeats[li]?.end)body+=':|';else body+='|';
+    return body;
+  }
+  function buildAbcText(){
+    let h='';h+='X:'+(state.headers.X||'0')+'\n';
+    if(state.headers.T)state.headers.T.split('\n').forEach(l=>{if(l.trim())h+='T:'+l+'\n'});
+    if(state.headers.C)state.headers.C.split('\n').forEach(l=>{if(l.trim())h+='C:'+l+'\n'});
+    if(state.headers.N)state.headers.N.split('\n').forEach(l=>{if(l.trim())h+='N:'+l+'\n'});
+    if(state.headers.R&&state.headers.R.trim())h+='R:'+state.headers.R.trim()+'\n';
+    if(state.headers.H&&state.headers.H.trim())state.headers.H.split('\n').forEach(l=>{if(l.trim())h+='H:'+l+'\n'});
+    if(state.headers.F&&state.headers.F.trim())h+='F:'+state.headers.F.trim()+'\n';
+    if(state.headers.Z&&state.headers.Z.trim())h+='Z:'+state.headers.Z.trim()+'\n';
+    if(state.headers.P&&state.headers.P.trim())h+='P:'+state.headers.P.trim()+'\n';
+    if(state.headers.W&&state.headers.W.trim())state.headers.W.split('\n').forEach(l=>{if(l.trim())h+='W:'+l+'\n'});
+    // Champs M/L/Q/K du morceau : ceux de la piste 1 (référence)
+    const savedTrack=state.activeTrack;
+    state.activeTrack=0;
+    h+='M:'+state.pieceMeter+'\n';
+    h+='L:'+state.pieceUnit+'\n';
+    h+='Q:'+beatAbcFraction()+'='+Math.round(state.tempo/beatQuarters())+'\n';
+    h+='K:'+keyAbc(state.pieceKeySig)+clefAbcSuffix(state.pieceClef)+'\n';
+    const nTracks=state.tracks.length;
+    let body='';
+    if(nTracks<=1){
+      body=buildVoiceBody();
+      const lyr=buildLyricLine();
+      state.activeTrack=savedTrack;
+      return h+body+(lyr?('\n'+lyr+'\n'):'\n');
+    }
+    // Multi-voix : déclarer les voix en en-tête, puis émettre chaque corps
+    let header='';
+    for(let i=0;i<nTracks;i++){const tr=state.tracks[i];const id=String(i+1);const clName=clefToAbcName(tr.pieceClef);header+='V:'+id+' clef='+clName;if(tr.name)header+=' name="'+tr.name.replace(/"/g,'')+'"';header+='\n'}
+    h+=header;
+    for(let i=0;i<nTracks;i++){
+      state.activeTrack=i;
+      body+='V:'+String(i+1)+'\n';
+      // Override M/L/K si la piste diffère de la piste 0
+      const t0=state.tracks[0];const ti=state.tracks[i];
+      if(i>0){
+        if(ti.pieceMeter!==t0.pieceMeter)body+='M:'+ti.pieceMeter+'\n';
+        if(ti.pieceUnit!==t0.pieceUnit)body+='L:'+ti.pieceUnit+'\n';
+        if(ti.pieceKeySig!==t0.pieceKeySig||ti.pieceClef!==t0.pieceClef)body+='K:'+keyAbc(ti.pieceKeySig)+clefAbcSuffix(ti.pieceClef)+'\n';
+      }
+      body+=buildVoiceBody()+'\n';
+      // Paroles de CETTE voix juste après son corps (format ABC standard)
+      const lyrV=buildLyricLine();
+      if(lyrV)body+=lyrV+'\n';
+    }
+    state.activeTrack=savedTrack;
+    return h+body;
+  }
+  // ===== Gestion des COUPLETS (plusieurs lignes de paroles) =====
+  // Modèle : le couplet 1 reste dans slot.lyric (rétro-compatibilité totale) ;
+  //   les couplets 2,3,… sont stockés dans slot.verses (slot.verses[0] = couplet 2, etc.).
+  // Une syllabe peut être '' (note sautée) ou finir par '-' (liaison) ; ' ' interne → '~' en ABC.
+  function verseSyl(slot,v){ return v<=1 ? (slot.lyric||'') : ((slot.verses&&slot.verses[v-2])||''); }
+  function setVerseSyl(slot,v,syl){
+    if(v<=1){ if(syl)slot.lyric=syl; else delete slot.lyric; return; }
+    slot.verses=slot.verses||[];
+    while(slot.verses.length<v-1)slot.verses.push('');
+    slot.verses[v-2]=syl||'';
+  }
+  function cleanupVerses(slot){
+    if(slot.lyric==='')delete slot.lyric;
+    if(slot.verses){
+      while(slot.verses.length && !slot.verses[slot.verses.length-1])slot.verses.pop();
+      if(!slot.verses.length)delete slot.verses;
+    }
+  }
+  // Une note qui PROLONGE une liaison (note de droite d'un tie) ne porte JAMAIS de syllabe :
+  // on retire lyric/verses pour que buildLyricLine emette un '*'. A appeler sur chaque figure
+  // de CONTINUATION produite par une scission (tail de splitSlot, pieces i>0 de beatAlignPieces).
+  function dropContinuationLyric(sl){ if(sl){ delete sl.lyric; delete sl.verses; } return sl; }
+  function countVersesInNotes(notes){
+    let max=1;
+    notes.forEach(s=>{ if(s.verses&&s.verses.length)max=Math.max(max,1+s.verses.length); });
+    return max;
+  }
+  function countVersesTrack(measures){
+    let max=1;
+    (measures||[]).forEach(m=>m.forEach(s=>{ if(s.type==='note'&&s.verses&&s.verses.length)max=Math.max(max,1+s.verses.length); }));
+    return max;
+  }
+  // Découpe UNE ligne de texte (un couplet) en syllabes. Le SÉPARATEUR est l'ESPACE uniquement :
+  // chaque mot séparé par une espace = UNE syllabe sur UNE note. Le tiret n'est PAS un séparateur,
+  // c'est un effet visuel (mot cassé) conservé tel quel dans la syllabe.
+  // '' = note sautée (décalage) lorsqu'il y a une espace en trop.
+  function parseLyricLineToSyls(line){
+    const syls=[];
+    line.split(' ').forEach(tok=>{
+      if(tok===''){syls.push('');return}   // espace en trop / début → note sautée (décalage)
+      syls.push(tok);                       // syllabe verbatim (tirets internes/finaux conservés)
+    });
+    return syls;
+  }
+
+  function buildLyricLine(){
+    // Génère les lignes ABC "w:" de la piste active : UNE ligne par couplet.
+    // Format ABC : syllabes séparées par espace ; '-' lie une syllabe à la note suivante ;
+    // '*' = note sans syllabe ; '~' = espace insécable dans une syllabe.
+    const notes=[];
+    state.measures.forEach(m=>m.forEach(s=>{if(s.type==='note')notes.push(s)}));
+    const nv=countVersesInNotes(notes);
+    const out=[];
+    for(let v=1;v<=nv;v++){
+      const syls=[];let any=false;
+      notes.forEach(s=>{
+        const l=verseSyl(s,v);
+        if(l){
+          any=true;
+          // Modèle : la syllabe est saisie telle quelle, espace = séparateur, tiret = effet visuel.
+          // En ABC w:, le '-' sépare les syllabes : pour préserver un tiret VISUEL interne (ex. "bon-jour"
+          // sur une seule note), on l'échappe en "\-" (que assignLyrics reconvertit). Un tiret FINAL de
+          // continuation est conservé comme vrai '-' (liaison à la note suivante, usage standard).
+          const hasTrailDash=l.endsWith('-');
+          let core=hasTrailDash?l.slice(0,-1):l;
+          core=core.replace(/-/g,'\\-');      // tirets internes → littéraux (visuels)
+          core=core.replace(/ /g,'~');        // espaces internes → insécables
+          syls.push(hasTrailDash?(core+'-'):core);
+        } else syls.push('*');
+      });
+      // retirer les '*' superflus en fin de ligne
+      while(syls.length&&syls[syls.length-1]==='*')syls.pop();
+      if(any&&syls.length)out.push('w:'+syls.join(' '));
+    }
+    return out.join('\n');
+  }
+
+  function parseKeyDef(s){s=s.trim();let sig=0,clef='treble';const cm=s.match(/clef=(\S+)/);if(cm){const c=cm[1].toLowerCase();if(c==='bass'||c==='f')clef='bass';else if(c==='treble-8'||c==='treble_8'||c==='treble8')clef='treble8';else if(c==='alto'||c==='c'||c==='alto3')clef='alto';else if(c==='tenor'||c==='alto4')clef='tenor';s=s.replace(cm[0],'').trim()}const km=s.match(/^([A-G])([#b]?)(.*)$/);if(km){const root=km[1],acc=km[2],mode=(km[3]||'').toLowerCase().trim();const M={'C':0,'G':1,'D':2,'A':3,'E':4,'B':5,'F#':6,'C#':7,'F':-1,'Bb':-2,'Eb':-3,'Ab':-4,'Db':-5,'Gb':-6,'Cb':-7};let bs=M[root+acc];if(bs===undefined){bs=M[root]||0;if(acc==='#')bs+=7;else if(acc==='b')bs-=7}sig=bs;if(mode.startsWith('m')&&!mode.startsWith('maj')&&!mode.startsWith('mix'))sig-=3;else if(mode.startsWith('dor'))sig-=2;else if(mode.startsWith('phr'))sig-=4;else if(mode.startsWith('lyd'))sig+=1;else if(mode.startsWith('mix'))sig-=1;else if(mode.startsWith('aeo'))sig-=3;else if(mode.startsWith('loc'))sig-=5}return{sig:Math.max(-7,Math.min(7,sig)),clef}}
+  // Repartit les syllabes des lignes w: sur les notes. CHAQUE ligne w: = UN couplet
+  // (l'indice de ligne donne le numéro de couplet ; chaque couplet repart de la 1re note).
+  function assignLyrics(ns,lines){
+    const notes=[];ns.measures.forEach(m=>m.forEach(s=>{if(s.type==='note')notes.push(s)}));
+    lines.forEach((line,vi)=>{
+      const verse=vi+1;
+      let ni=0;
+      // tokens : syllabes separees par espaces ; '-' colle a la note ; '_' tient ; '*' saute
+      const toks=line.replace(/\\-/g,'\u0001').split(/\s+/).filter(x=>x.length);
+      toks.forEach(tok=>{
+        if(ni>=notes.length)return;
+        if(tok==='*'){ni++;return}
+        if(tok==='|'){return}
+        if(tok==='_'){if(notes[ni-1]){const prev=verseSyl(notes[ni-1],verse);setVerseSyl(notes[ni-1],verse,(prev||'')+'_')}return}
+        const syl=tok.replace(/\u0001/g,'-').replace(/~/g,' ');
+        setVerseSyl(notes[ni],verse,syl);ni++;
+      });
+    });
+    notes.forEach(cleanupVerses);
+  }
+  // Decoupe un fichier ABC multi-morceaux en blocs (chaque morceau commence par X:)
+  function splitTunes(text){
+    const lines=text.split(/\r?\n/);
+    const tunes=[];let cur=null;
+    for(const line of lines){
+      if(/^\s*X:\s*/.test(line)){
+        if(cur)tunes.push(cur);
+        cur={lines:[line],title:'',x:(line.match(/^\s*X:\s*(.*)$/)||[])[1]||''};
+      } else if(cur){
+        cur.lines.push(line);
+        const tm=line.match(/^\s*T:\s*(.*)$/);
+        if(tm&&!cur.title)cur.title=tm[1].trim();
+      }
+    }
+    if(cur)tunes.push(cur);
+    return tunes.map(t=>({title:t.title||('Sans titre (X:'+(t.x||'?')+')'),x:t.x,abc:t.lines.join('\n')}));
+  }
+  // === Conversion des grâce notes {..} en n-uplet (à l'ouverture) ===
+  // Règle : le n-uplet entier occupe la moitié de la note qui suit, et cette note
+  // est raccourcie de moitié. Le moteur applique un ratio fixe 2 aux n-uplets
+  // (n notes de longueur L_g occupent 2*L_g), donc on choisit L_g = (moitié)/2.
+  // Tout le calcul se fait en longueurs ABC relatives (indépendant de L:).
+  function _gnParseLen(s){if(s===''||s==null)return 1;if(s==='/')return 0.5;if(s==='//')return 0.25;if(s==='///')return 0.125;if(s.charAt(0)==='/'){const n=parseInt(s.substring(1),10);return 1/(n||2)}if(s.indexOf('/')>=0){const p=s.split('/');return (parseInt(p[0],10)||1)/(parseInt(p[1],10)||2)}return parseInt(s,10)||1}
+  function _gnFormatLen(v){const e=1e-9;if(Math.abs(v-1)<e)return '';if(Math.abs(v-Math.round(v))<e)return String(Math.round(v));if(Math.abs(v-0.5)<e)return '/2';if(Math.abs(v-0.25)<e)return '/4';if(Math.abs(v-0.125)<e)return '/8';if(Math.abs(v-1.5)<e)return '3/2';if(Math.abs(v-0.75)<e)return '3/4';if(Math.abs(v-0.375)<e)return '3/8';const denom=16;const numer=Math.round(v*denom);function gcd(a,b){return b?gcd(b,a%b):a}const g=gcd(numer,denom)||1;const a=numer/g,b=denom/g;if(b===1)return String(a);if(a===1)return '/'+b;return a+'/'+b}
+  function expandGraceNotesBody(body){
+    let out='';let i=0;
+    while(i<body.length){
+      const c=body[i];
+      if(c==='{'){
+        const end=body.indexOf('}',i);
+        if(end<0){out+=c;i++;continue}
+        let inner=body.substring(i+1,end);
+        // ignorer un éventuel '/' initial (appoggiature ABC : {/note})
+        inner=inner.replace(/^\//,'');
+        // collecter les grâce notes
+        const re=/(\^\^|__|\^|_|=)?([A-Ga-g])('+|,+)?(\d*\/*\d*)/g;
+        const gtok=[];let gm;
+        while((gm=re.exec(inner))){gtok.push({acc:gm[1]||'',note:gm[2],oct:gm[3]||''})}
+        const n=gtok.length;
+        // chercher la note (ou accord) qui suit immédiatement après '}'
+        let after=body.slice(end+1);
+        let lead='';let k=0;while(k<after.length&&/\s/.test(after[k])){lead+=after[k];k++}
+        after=after.slice(k);
+        let nextHead='',nextLenStr='',consumed=0;
+        if(after[0]==='['){const ce=after.indexOf(']');if(ce>=0){let j=ce+1;let len='';while(j<after.length&&/[\d\/]/.test(after[j])){len+=after[j];j++}nextHead=after.slice(0,ce+1);nextLenStr=len;consumed=j}}
+        else{const mm=after.match(/^((?:\^\^|__|\^|_|=)?[A-Ga-g](?:'+|,+)?)(\d*\/*\d*)/);if(mm){nextHead=mm[1];nextLenStr=mm[2];consumed=mm[0].length}}
+        if(n>0&&nextHead){
+          const lenVal=_gnParseLen(nextLenStr);
+          const halfLen=lenVal/2;            // note suivante raccourcie de moitié
+          const graceLen=halfLen/2;          // figure de base des grâce notes (ratio fixe 2)
+          const gl=_gnFormatLen(graceLen);
+          if(n===1){
+            // une seule grâce note : pas de n-uplet, longueur = moitié de la note suivante
+            const g1=_gnFormatLen(halfLen);
+            out+=lead+gtok[0].acc+gtok[0].note+gtok[0].oct+g1+' '+nextHead+_gnFormatLen(halfLen);
+          } else {
+            const toks=gtok.map(t=>t.acc+t.note+t.oct+gl).join('');
+            out+=lead+'('+n+' '+toks+' '+nextHead+_gnFormatLen(halfLen);
+          }
+          i=end+1+k+consumed;
+          continue;
+        }
+        // pas de note après : on garde le contenu sans accolades
+        out+=inner;i=end+1;continue;
+      }
+      out+=c;i++;
+    }
+    return out;
+  }
+
+  function parseAbcText(text){const cleaned=text.split(/\r?\n/).map(line=>{const m=line.match(/^(.*?)(?:%.*)?$/);return m?m[1]:line});const ns={headers:{X:'1',T:'',C:'',N:'',H:'',F:'',Z:'',P:'',W:''},pieceMeter:'4/4',pieceUnit:'1/4',pieceKeySig:0,pieceClef:'treble',measures:[],timeChanges:{},keyChanges:{},clefChanges:{},repeats:{},tempo:60,tempoDotted:false,tempoBeatUnit:1,tempoBeatDotted:false,tempoChanges:{},breaks:{},sel:{m:0,s:0},octave:0,volume:state.volume,parts:{}};
+    // --- multi-voix ---
+    const voiceOrder=[];            // ordre d'apparition des voix
+    const voiceMeta={};             // id -> {clef,name}
+    const bodyByVoice={};           // id -> bodyText
+    let curVoice='1';               // voix courante (défaut '1' si aucune V: déclarée)
+    let usedVoices=false;           // a-t-on rencontré au moins un V: ?
+    function ensureVoice(id){if(!(id in bodyByVoice)){bodyByVoice[id]='';voiceOrder.push(id);voiceMeta[id]=voiceMeta[id]||{}}}
+    ensureVoice('1');
+    function addBody(s){bodyByVoice[curVoice]=(bodyByVoice[curVoice]||'')+s}
+    let inBody=false,sawL=false;
+    for(const line of cleaned){const t=line.trim();
+      if(!inBody){const m=t.match(/^([A-Z]):\s*(.*)$/);if(m){const k=m[1],v=m[2].trim();if(k==='X')ns.headers.X=v;else if(k==='T'){ns.headers.T=ns.headers.T?(ns.headers.T+'\n'+v):v}else if(k==='C'){ns.headers.C=ns.headers.C?(ns.headers.C+'\n'+v):v}else if(k==='N'){ns.headers.N=ns.headers.N?(ns.headers.N+'\n'+v):v}else if(k==='R'){ns.headers.R=v}else if(k==='H'){ns.headers.H=ns.headers.H?(ns.headers.H+'\n'+v):v}else if(k==='F'){ns.headers.F=v}else if(k==='Z'){ns.headers.Z=v}else if(k==='W'){ns.headers.W=ns.headers.W?(ns.headers.W+'\n'+v):v}else if(k==='P'){ns.headers.P=v}else if(k==='M')ns.pieceMeter=v;else if(k==='L'){ns.pieceUnit=v;sawL=true}else if(k==='V'){const vm=v.match(/^(\S+)(.*)$/);if(vm){const vid=vm[1];usedVoices=true;ensureVoice(vid);curVoice=vid;const cl=v.match(/clef\s*=\s*(\S+)/i);if(cl){const cc=cl[1].toLowerCase();voiceMeta[vid].clef=clefFromAbcToken(cc,undefined)}const nm=v.match(/(?:name|nm)\s*=\s*"([^"]*)"/i)||v.match(/(?:name|nm)\s*=\s*(\S+)/i);if(nm)voiceMeta[vid].name=nm[1]}}else if(k==='Q'){const qm=v.match(/(\d+)\s*\/\s*(\d+)\s*=\s*(\d+)/);if(qm){const num=parseInt(qm[1],10),den=parseInt(qm[2],10),bpm=parseInt(qm[3],10);const bf=beatFromAbc(num,den);const uq=bf.unit*(bf.dotted?1.5:1);ns.tempo=bpm*uq;ns.tempoBeatUnit=bf.unit;ns.tempoBeatDotted=bf.dotted;ns.tempoDotted=(bf.unit===1&&bf.dotted);ns._hasTempo=true}else{const qm2=v.match(/=\s*(\d+)/);if(qm2){ns.tempo=parseInt(qm2[1],10);ns.tempoBeatUnit=1;ns.tempoBeatDotted=false;ns.tempoDotted=false;ns._hasTempo=true}else{const qm3=v.match(/^\s*(\d+)\s*$/);if(qm3){const um=ns.pieceUnit.match(/^\s*1\s*\/\s*(\d+)\s*$/);const denom=um?parseInt(um[1],10):4;const unitInQuarters=4/denom;ns.tempo=parseInt(qm3[1],10)*unitInQuarters;ns.tempoBeatUnit=unitInQuarters;ns.tempoBeatDotted=false;ns.tempoDotted=false;ns._hasTempo=true}}}}else if(k==='K'){const kd=parseKeyDef(v);ns.pieceKeySig=kd.sig;ns.pieceClef=kd.clef;inBody=true}continue}continue}
+      // --- corps ---
+      // Ligne V: dans le corps -> change la voix courante
+      const vline=t.match(/^V:\s*(\S+)(.*)$/);
+      if(vline){const vid=vline[1];usedVoices=true;ensureVoice(vid);curVoice=vid;const cl=t.match(/clef\s*=\s*(\S+)/i);if(cl){const cc=cl[1].toLowerCase();voiceMeta[vid].clef=clefFromAbcToken(cc,voiceMeta[vid].clef)}const nm=t.match(/(?:name|nm)\s*=\s*"([^"]*)"/i);if(nm)voiceMeta[vid].name=nm[1];const sn=t.match(/(?:sname|snm)\s*=\s*"([^"]*)"/i);if(sn)voiceMeta[vid].sname=sn[1];continue}
+      const wf=t.match(/^([A-Za-z]):\s*(.*)$/);if(wf&&'PwWslmreds'.includes(wf[1])){const fk=wf[1],fv=wf[2];if(fk==='P'){addBody(' [P:'+fv.trim()+'] ')}else if(fk==='w'||fk==='W'){ns._lyricLinesByVoice=ns._lyricLinesByVoice||{};(ns._lyricLinesByVoice[curVoice]=ns._lyricLinesByVoice[curVoice]||[]).push(fv)}continue}
+      const hf=t.match(/^([MLQK]):\s*(.*)$/);
+      if(hf){const hk=hf[1],hv=hf[2].trim();const seenMusic=/[A-Ga-gz]/.test(bodyByVoice[curVoice]||'');
+        if(!seenMusic){
+          if(hk==='M')ns.pieceMeter=hv;
+          else if(hk==='L'){ns.pieceUnit=hv;sawL=true}
+          else if(hk==='Q'){const qm=hv.match(/(\d+)\s*\/\s*(\d+)\s*=\s*(\d+)/);if(qm){const num=parseInt(qm[1],10),den=parseInt(qm[2],10),bpm=parseInt(qm[3],10);const bf=beatFromAbc(num,den);const uq=bf.unit*(bf.dotted?1.5:1);ns.tempo=bpm*uq;ns.tempoBeatUnit=bf.unit;ns.tempoBeatDotted=bf.dotted;ns.tempoDotted=(bf.unit===1&&bf.dotted);ns._hasTempo=true}else{const qm2=hv.match(/=\s*(\d+)/);if(qm2){ns.tempo=parseInt(qm2[1],10);ns.tempoBeatUnit=1;ns.tempoBeatDotted=false;ns.tempoDotted=false;ns._hasTempo=true}else{const qm3=hv.match(/^\s*(\d+)\s*$/);if(qm3){const um=ns.pieceUnit.match(/^\s*1\s*\/\s*(\d+)\s*$/);const denom=um?parseInt(um[1],10):4;const unitInQuarters=4/denom;ns.tempo=parseInt(qm3[1],10)*unitInQuarters;ns.tempoBeatUnit=unitInQuarters;ns.tempoBeatDotted=false;ns.tempoDotted=false;ns._hasTempo=true}}}}
+          else if(hk==='K'){const kd=parseKeyDef(hv);
+            if(usedVoices&&curVoice){
+              // K: en tête du corps d'une voix → définit la clé/armure de CETTE voix
+              voiceMeta[curVoice]=voiceMeta[curVoice]||{};
+              if(kd.clef)voiceMeta[curVoice].clef=kd.clef;
+              voiceMeta[curVoice].keySig=kd.sig;
+            } else {
+              ns.pieceKeySig=kd.sig;ns.pieceClef=kd.clef;
+            }
+          }
+        } else {
+          if(hk==='M'||hk==='L'||hk==='K')addBody(' ['+hk+':'+hv+'] ');
+        }
+        continue;
+      }
+      addBody(' '+t);
+    }
+    if(!inBody)return null;
+    if(!sawL){const pm=parseMeter(ns.pieceMeter);ns.pieceUnit=(pm.num/pm.den<0.75)?'1/16':'1/8'}
+    // Construire les pistes à partir des voix collectées
+    const voices=voiceOrder.filter(id=>(bodyByVoice[id]||'').trim().length>0);
+    const finalVoices=(voices.length?voices:['1']).slice(0,MAX_TRACKS);
+    ns.tracks=[];
+    finalVoices.forEach(vid=>{
+      const meta=voiceMeta[vid]||{};
+      // sous-état temporaire pour parser cette voix
+      const sub={pieceMeter:ns.pieceMeter,pieceUnit:ns.pieceUnit,pieceKeySig:(meta.keySig!==undefined?meta.keySig:ns.pieceKeySig),pieceClef:meta.clef||ns.pieceClef,measures:[],timeChanges:{},keyChanges:{},clefChanges:{},repeats:{},parts:{},breaks:{}};
+      let bt=expandGraceNotesBody(bodyByVoice[vid]||'');
+      parseAbcBody(bt,sub);
+      const trk=makeTrack({name:meta.name||('V'+vid),measures:sub.measures,pieceMeter:sub.pieceMeter,pieceUnit:sub.pieceUnit,pieceKeySig:sub.pieceKeySig,pieceClef:sub.pieceClef,timeChanges:sub.timeChanges,keyChanges:sub.keyChanges,clefChanges:sub.clefChanges,repeats:sub.repeats,parts:sub.parts});
+      // sauts de ligne/page ($) : conservés par voix ET fusionnés au niveau document
+      trk.breaks=sub.breaks||{};
+      trk.sname=(meta&&meta.sname)||'';
+      Object.keys(sub.breaks||{}).forEach(k=>{ ns.breaks[k]=Object.assign(ns.breaks[k]||{},sub.breaks[k]); });
+      ns.tracks.push(trk);
+    });
+    if(!ns.tracks.length)ns.tracks.push(makeTrack({pieceMeter:ns.pieceMeter,pieceUnit:ns.pieceUnit,pieceKeySig:ns.pieceKeySig,pieceClef:ns.pieceClef}));
+    ns.activeTrack=0;
+    // Paroles : appliquées à CHAQUE voix (chaque w: va sur la piste de sa voix)
+    if(ns._lyricLinesByVoice){
+      finalVoices.forEach((vid,ti)=>{
+        const lines=ns._lyricLinesByVoice[vid];
+        if(lines&&lines.length&&ns.tracks[ti]){
+          assignLyrics({measures:ns.tracks[ti].measures}, lines);
+        }
+      });
+    }
+    return ns;
+  }
+  function parseAbcBody(body,ns){let i=0,curMeasure=[],mIdx=0,lastChord=null,lastText=null,pendingOrn=[],pendingTuplet=null,slurDepth=0,lastNoteSlot=null;const measures=ns.measures;function flush(){if(curMeasure.length>0){measures.push(curMeasure);curMeasure=[];mIdx++}}function uM(){const m=ns.pieceUnit.match(/^\s*1\s*\/\s*(\d+)\s*$/);if(!m)return 1;return parseInt(m[1],10)/4}while(i<body.length){const c=body[i];if(/\s/.test(c)){i++;continue}if(c==='$'){const bm=(curMeasure.length>0)?mIdx:(mIdx-1);if(bm>=0){if(!ns.breaks[bm])ns.breaks[bm]={};ns.breaks[bm].line=true}i++;continue}if(c==='%'){while(i<body.length&&body[i]!=='\n')i++;continue}if(c==='['&&body[i+1]&&body[i+1].match(/[A-Z]/)&&body[i+2]===':'){const end=body.indexOf(']',i);if(end<0){i++;continue}const inner=body.substring(i+1,end);const m=inner.match(/^([A-Z]):\s*(.*)$/);if(m){const k=m[1],v=m[2].trim();if(k==='M')ns.timeChanges[mIdx+(curMeasure.length>0?1:0)]=v;else if(k==='L')ns.pieceUnit=v;else if(k==='Q'){const ti=mIdx+(curMeasure.length>0?1:0);const qm=v.match(/(\d+)\s*\/\s*(\d+)\s*=\s*(\d+)/);let bpmQ=null;if(qm){const bf=beatFromAbc(parseInt(qm[1],10),parseInt(qm[2],10));bpmQ=parseInt(qm[3],10)*bf.unit*(bf.dotted?1.5:1)}else{const qm2=v.match(/=\s*(\d+)/);if(qm2)bpmQ=parseInt(qm2[1],10);else{const qm3=v.match(/^\s*(\d+)\s*$/);if(qm3)bpmQ=parseInt(qm3[1],10)}}if(bpmQ!==null){if(ti===0)ns.tempo=bpmQ;else ns.tempoChanges[ti]=bpmQ}}else if(k==='P'){ns.parts[mIdx+(curMeasure.length>0?1:0)]=v}else if(k==='K'){const kd=parseKeyDef(v);const ti=mIdx+(curMeasure.length>0?1:0);ns.keyChanges[ti]=kd.sig;if(kd.clef!=='treble')ns.clefChanges[ti]=kd.clef}}i=end+1;continue}if(c==='['&&body[i+1]&&/[1-9]/.test(body[i+1])){const v=parseInt(body[i+1],10);const ti=mIdx+(curMeasure.length===0?0:1);if(!ns.repeats[ti])ns.repeats[ti]={};ns.repeats[ti].volta=v;i+=2;continue}if(c==='['&&body[i+1]&&/[\^_=A-Ga-g]/.test(body[i+1])){const end=body.indexOf(']',i);if(end>i){const inner=body.substring(i+1,end);i=end+1;let dsOut='';while(i<body.length&&/[\d/]/.test(body[i])){dsOut+=body[i];i++}let tie=false;if(body[i]==='-'){tie=true;i++}
+        // découper les notes internes de l'accord (avec leur durée propre)
+        const chordNotes=[];let p=0;let firstDs='';while(p<inner.length){let a='';while(p<inner.length&&(inner[p]==='^'||inner[p]==='_'||inner[p]==='=')){if(inner[p]==='^')a=(a==='^'?'^^':'^');else if(inner[p]==='_')a=(a==='_'?'__':'_');else a='=';p++}if(p>=inner.length)break;const cc=inner[p];if(/[A-Ga-g]/.test(cc)){let nn=cc.toUpperCase();let oo=(cc===cc.toLowerCase())?1:0;p++;while(p<inner.length&&(inner[p]==="'"||inner[p]===',')){if(inner[p]==="'")oo++;else oo--;p++}let ids='';while(p<inner.length&&/[\d/]/.test(inner[p])){ids+=inner[p];p++}if(firstDs==='')firstDs=ids;chordNotes.push({note:nn,octave:oo,acc:a?(a.length>1?a[0]:a):''})}else p++}
+        // durée : externe (après ]) prioritaire, sinon celle des notes internes
+        const dsUse=dsOut||firstDs;const factor=parseDurationSpec(dsUse);const qD=factor/uM();let dur=qD,dot=false;const trial=qD*2/3;if(Math.abs(Math.round(Math.log2(trial))-Math.log2(trial))<1e-6&&trial>=0.0625&&trial<=4){dur=trial;dot=true}
+        if(chordNotes.length){const first=chordNotes[0];const slot={type:'note',note:first.note,octave:first.octave,dur,dot};if(first.acc)slot.acc=first.acc;if(chordNotes.length>1)slot.stack=chordNotes.slice(1).map(x=>({note:x.note,octave:x.octave,acc:x.acc}));if(tie)slot.tieToNext=true;if(lastChord){slot.chord=lastChord;lastChord=null}if(lastText){slot.text=lastText;lastText=null}if(pendingOrn.length){slot.orn=pendingOrn.slice();pendingOrn=[]}if(pendingTuplet&&pendingTuplet.remaining>0){slot.tuplet=pendingTuplet.n;slot.tupletId=pendingTuplet.id;if(pendingTuplet.normal&&pendingTuplet.normal!==2)slot.tupletNormal=pendingTuplet.normal;pendingTuplet.remaining--;if(pendingTuplet.remaining===0)pendingTuplet=null}if(slurDepth>0)slot.slurToNext=true;lastNoteSlot=slot;curMeasure.push(slot)}continue}}if(c==='['){const end=body.indexOf(']',i);if(end>i){const inner=body.substring(i+1,end);const noteRe=/(\^\^|__|\^|_|=)?([A-Ga-g])('+|,+)?(\d*\/*\d*)/g;const stackNotes=[];let mm;while((mm=noteRe.exec(inner))){let acc=mm[1]||'';let nn=mm[2].toUpperCase();let oct=(mm[2]===mm[2].toLowerCase())?1:0;const adj=mm[3]||'';for(const ch2 of adj){if(ch2==="'")oct++;else if(ch2===',')oct--}stackNotes.push({note:nn,octave:oct,acc:acc?(acc.length>1?acc[0]:acc):'',ds:mm[4]||''})}
+      if(stackNotes.length>0){i=end+1;let ds='';while(i<body.length&&/[\d/]/.test(body[i])){ds+=body[i];i++}let tie=false;if(body[i]==='-'){tie=true;i++}
+        // durée : celle après ] si présente, sinon celle de la 1re note interne
+        const durSpec=ds||stackNotes[0].ds;const factor=parseDurationSpec(durSpec);const qD=factor/uM();let dur=qD,dot=false;const trial=qD*2/3;if(Math.abs(Math.round(Math.log2(trial))-Math.log2(trial))<1e-6&&trial>=0.0625&&trial<=4){dur=trial;dot=true}
+        const slot={type:'note',note:stackNotes[0].note,octave:stackNotes[0].octave,dur,dot};if(stackNotes[0].acc)slot.acc=stackNotes[0].acc;if(tie)slot.tieToNext=true;
+        if(stackNotes.length>1)slot.stack=stackNotes.slice(1).map(s=>({note:s.note,octave:s.octave,acc:s.acc}));
+        if(lastChord){slot.chord=lastChord;lastChord=null}if(lastText){slot.text=lastText;lastText=null}if(pendingOrn.length){slot.orn=pendingOrn.slice();pendingOrn=[]}if(pendingTuplet&&pendingTuplet.remaining>0){slot.tuplet=pendingTuplet.n;slot.tupletId=pendingTuplet.id;if(pendingTuplet.normal&&pendingTuplet.normal!==2)slot.tupletNormal=pendingTuplet.normal;pendingTuplet.remaining--;if(pendingTuplet.remaining===0)pendingTuplet=null}
+        curMeasure.push(slot);continue}
+      i=end+1;continue}}if(c==='"'){const end=body.indexOf('"',i+1);if(end<0){i++;continue}const ch=body.substring(i+1,end);if(/^[\^_<>@]/.test(ch)){const txt=ch.replace(/^[\^_<>@]/,'');if(txt)lastText=txt}else{if(ch)lastChord=ch}i=end+1;continue}if(c==='!'){const end=body.indexOf('!',i+1);if(end<0){i++;continue}const name=body.substring(i+1,end);const km={'trill':'T','turn':'P','fermata':'H','accent':'L','staccato':'.','upbow':'u','downbow':'v','coda':'O'};const code=km[name]||name;pendingOrn.push(code);i=end+1;continue}if(c==='~'){pendingOrn.push('~');i++;continue}if('.TMHLuv'.includes(c)&&(i===0||!/[A-Ga-gz0-9]/.test(body[i-1]))){const next=body[i+1];if(next&&/[\^_=A-Ga-gz]/.test(next)){pendingOrn.push(c);i++;continue}}if(c==='('&&(!body[i+1]||!/[2-9]/.test(body[i+1]))){slurDepth++;i++;continue}if(c===')'){if(slurDepth>0)slurDepth--;if(lastNoteSlot)lastNoteSlot.slurToNext=false;i++;continue}if(c==='('&&body[i+1]&&/[2-9]/.test(body[i+1])){let nd='';let k=i+1;while(k<body.length&&/[0-9]/.test(body[k])){nd+=body[k];k++}const n=parseInt(nd,10);let j=k,take=n,normal=2;if(body[j]===':'){j++;const nm=body.substring(j).match(/^(\d+)?(?::(\d+))?/);if(nm){j+=(nm[0]||'').length;if(nm[1])normal=parseInt(nm[1],10);if(nm[2])take=parseInt(nm[2],10)}}pendingTuplet={n:n,normal:normal,remaining:take,id:nextTupletId++};i=j;continue}if(c===':'||c==='|'){let j=i,bar='';while(j<body.length&&(body[j]==='|'||body[j]===':')){bar+=body[j];j++}const endRep=/:\|/.test(bar);const startRep=/\|:/.test(bar);if(curMeasure.length>0){if(endRep){if(!ns.repeats[mIdx])ns.repeats[mIdx]={};ns.repeats[mIdx].end=true}flush()}if(startRep){if(!ns.repeats[mIdx])ns.repeats[mIdx]={};ns.repeats[mIdx].start=true}if(j<body.length&&/[1-9]/.test(body[j])){const v=parseInt(body[j],10);if(!ns.repeats[mIdx])ns.repeats[mIdx]={};ns.repeats[mIdx].volta=v;j++}i=j;continue}let acc='';while(i<body.length&&(body[i]==='^'||body[i]==='_'||body[i]==='=')){if(body[i]==='^')acc=(acc==='^'?'^^':'^');else if(body[i]==='_')acc=(acc==='_'?'__':'_');else if(body[i]==='=')acc='=';i++}if(i>=body.length)break;const ch=body[i];if(/[A-Ga-g]/.test(ch)){let note=ch.toUpperCase();let oct=(ch===ch.toLowerCase())?1:0;i++;while(i<body.length&&(body[i]==="'"||body[i]===',')){if(body[i]==="'")oct++;else oct--;i++}let ds='';while(i<body.length&&/[\d/]/.test(body[i])){ds+=body[i];i++}let tie=false;if(body[i]==='-'){tie=true;i++}const factor=parseDurationSpec(ds);const qD=factor/uM();let dur=qD,dot=false;const trial=qD*2/3;if(Math.abs(Math.round(Math.log2(trial))-Math.log2(trial))<1e-6&&trial>=0.0625&&trial<=4){dur=trial;dot=true}const slot={type:'note',note,octave:oct,dur,dot};if(acc)slot.acc=acc.length>1?acc[0]:acc;if(tie)slot.tieToNext=true;if(lastChord){slot.chord=lastChord;lastChord=null}if(lastText){slot.text=lastText;lastText=null}if(pendingOrn.length){slot.orn=pendingOrn.slice();pendingOrn=[]}if(pendingTuplet&&pendingTuplet.remaining>0){slot.tuplet=pendingTuplet.n;slot.tupletId=pendingTuplet.id;if(pendingTuplet.normal&&pendingTuplet.normal!==2)slot.tupletNormal=pendingTuplet.normal;pendingTuplet.remaining--;if(pendingTuplet.remaining===0)pendingTuplet=null}if(slurDepth>0)slot.slurToNext=true;lastNoteSlot=slot;curMeasure.push(slot);continue}if(ch==='z'||ch==='Z'){i++;let ds='';while(i<body.length&&/[\d/]/.test(body[i])){ds+=body[i];i++}const factor=parseDurationSpec(ds);const qD=(ch==='Z')?measureCapacity(ns.pieceMeter):(factor/uM());let dur=qD,dot=false;const trial=qD*2/3;if(Math.abs(Math.round(Math.log2(trial))-Math.log2(trial))<1e-6&&trial>=0.0625&&trial<=4){dur=trial;dot=true}const slot={type:'rest',dur,dot};if(lastChord){slot.chord=lastChord;lastChord=null}if(lastText){slot.text=lastText;lastText=null}if(pendingTuplet&&pendingTuplet.remaining>0){slot.tuplet=pendingTuplet.n;slot.tupletId=pendingTuplet.id;if(pendingTuplet.normal&&pendingTuplet.normal!==2)slot.tupletNormal=pendingTuplet.normal;pendingTuplet.remaining--;if(pendingTuplet.remaining===0)pendingTuplet=null}curMeasure.push(slot);continue}i++}if(curMeasure.length>0)measures.push(curMeasure);
+    // Chaque mesure dont la durée diffère de la capacité courante reçoit sa VRAIE métrique locale
+    // (anacrouse, bouclage, changement de métrique non annoncé). Le moteur garde sa logique "mesure = capacité".
+    // Dénominateur naturel : croche->/8, noire->/4, 7 croches->7/8, blanche->1/2, ronde->4/4.
+    function durToMeter(q){// q = durée en noires ; retourne "num/den"
+      let num=q,den=4;// noires -> /4
+      // ramener à un dénominateur puissance de 2 rendant num entier
+      while(Math.abs(num-Math.round(num))>1e-9 && den<256){num*=2;den*=2}
+      num=Math.round(num);
+      return num+'/'+den;
+    }
+    measures.forEach((meas,mi)=>{
+      let used=0;for(const s of meas)used+=effDur(s);
+      let lm=ns.pieceMeter;for(let k=0;k<=mi;k++)if(ns.timeChanges[k])lm=ns.timeChanges[k];
+      const cap=measureCapacity(lm);
+      if(used>1e-6 && Math.abs(used-cap)>1e-6){
+        // mesure partielle ou débordante : lui donner sa vraie métrique locale, sans silence ni troncature
+        if(!ns.timeChanges[mi])ns.timeChanges[mi]=durToMeter(used);
+        // restaurer la métrique normale à la mesure suivante seulement si elle est PLEINE et n'a pas déjà une métrique
+        if(mi+1<measures.length && !ns.timeChanges[mi+1]){
+          let nu=0;for(const s of measures[mi+1])nu+=effDur(s);
+          if(Math.abs(nu-cap)<1e-6)ns.timeChanges[mi+1]=lm;
+        }
+      } else if(used<=1e-6){
+        // mesure vide : compléter par des silences à la capacité courante
+        const beat=4/parseMeter(lm).den;const tail=splitDurationByBeat(0,cap,beat).map(p=>({type:'rest',dur:p.dur,dot:p.dot}));meas.push(...tail);
+      }
+    });
+    if(measures.length===0)measures.push(buildEmptyMeasure(ns.pieceMeter))}
+  function parseDurationSpec(s){if(s==='')return 1;if(s==='/')return 0.5;if(s==='//')return 0.25;if(s==='///')return 0.125;if(s.startsWith('/')){const n=parseInt(s.substring(1),10);return 1/(n||2)}if(s.includes('/')){const[n,d]=s.split('/');const a=parseInt(n,10)||1;const b=parseInt(d,10)||2;return a/b}return parseInt(s,10)||1}
+
+  function expandForPlayback(){const out=[];const N=state.measures.length;if(N===0)return out;let i=0,pass=1,safety=0;const done={};const sectionStarted=new Set();while(i<N&&safety<5000){safety++;const r=state.repeats[i]||{};if(r.start&&!sectionStarted.has(i)){sectionStarted.add(i);pass=1}if(r.volta!==undefined&&r.volta!==pass){const skipV=r.volta;let j=i;while(j<N){const rj=state.repeats[j]||{};if(rj.volta!==skipV)break;j++}i=j;continue}out.push(i);if(r.end){let startIdx=0;for(let k=i;k>=0;k--){if(state.repeats[k]?.start){startIdx=k;break}}const key=startIdx+':'+i;if(!done[key]){done[key]=true;i=startIdx;pass=2;continue}pass=1}i++;if(out.length>5000)break}return out}
+
+  const SCORE_W=800,STAFF_TOP_Y=22,LINE_GAP=7,LEFT_PAD=50,RIGHT_PAD=6,MEASURES_PER_LINE=5,STAFF_SPACING=60;
+  // Référence verticale de chaque clé (= indice de pas posé sur la LIGNE DU BAS de la portée).
+  // treble=2 (Mi du bas). bass=-3 (Sol grave). alto (ut 3e) : Do médian (step 0) sur la ligne du
+  // milieu → ligne du bas = step -4. tenor (ut 4e) : Do médian sur la 4e ligne → ligne du bas = step -6.
+  // treble8 (Sol-8) : MÊME affichage que la clé de sol ; le « 8 » indique que le SON est une octave
+  // plus bas (géré à la lecture/export). Les clés d'ut ne transposent PAS le son.
+  function clefRefStep(c){if(c==='bass')return -3;if(c==='alto')return -4;if(c==='tenor')return -6;return 2}
+  // Décalage SONORE dû à la clé : Sol-8 (treble8) sonne une octave plus bas (−12 demi-tons).
+  // N'affecte que la lecture/preview, jamais le modèle ni l'affichage. (alto/tenor : aucun décalage.)
+  function clefSoundShift(clef){return clef==='treble8'?-12:0;}
+  function noteY(staffTop,step,c){const r=clefRefStep(c);const bl=staffTop+4*LINE_GAP;return bl-(step-r)*(LINE_GAP/2)}
+  function stepIndex(note,oct){const m={C:0,D:1,E:2,F:3,G:4,A:5,B:6};return m[note]+7*oct}
+  // Notes (note+octave+altération) d'un slot : note principale + empilées (accord).
+  function slotChordNotes(slot){if(!slot||slot.type!=='note')return [];const out=[{note:slot.note,octave:slot.octave,acc:slot.acc||''}];if(slot.stack)slot.stack.forEach(s=>out.push({note:s.note,octave:s.octave,acc:s.acc||''}));return out;}
+  // Y des têtes communes entre deux slots (pour tracer un tie PAR hauteur tenue, accords inclus).
+  function sharedTieYs(prevSlot,curSlot,staffTop,c){const A=slotChordNotes(prevSlot),B=slotChordNotes(curSlot),res=[];A.forEach(a=>{if(B.some(b=>b.note===a.note&&b.octave===a.octave&&(b.acc||'')===(a.acc||''))){res.push(noteY(staffTop,stepIndex(a.note,a.octave),c));}});return res;}
+  const TSS={F:10,C:7,G:11,D:8,A:5,E:9,B:6},TFS={B:6,E:9,A:5,D:8,G:4,C:7,F:10},BSS={F:3,C:0,G:4,D:1,A:-2,E:2,B:-1},BFS={B:-1,E:2,A:-2,D:1,G:-3,C:0,F:3};
+  // Clés d'ut : positions des altérations d'armure (indices de pas), dérivées du placement standard.
+  const ASS={F:3,C:0,G:4,D:1,A:-2,E:2,B:-1},AFS={B:-1,E:2,A:-2,D:1,G:-3,C:0,F:3};            // alto (ut 3e)
+  const NSS={F:-4,C:0,G:-3,D:1,A:-2,E:2,B:-1},NFS={B:-1,E:2,A:-2,D:1,G:-3,C:0,F:-4};          // tenor (ut 4e)
+  function keySigAccidentals(sig,c){const out=[];
+    const SH=(c==='bass')?BSS:(c==='alto')?ASS:(c==='tenor')?NSS:TSS;
+    const FL=(c==='bass')?BFS:(c==='alto')?AFS:(c==='tenor')?NFS:TFS;
+    if(sig>0){for(let i=0;i<sig;i++)out.push({sym:'♯',step:SH[SHARP_NOTES[i]]})}
+    else if(sig<0){for(let i=0;i<-sig;i++)out.push({sym:'♭',step:FL[FLAT_NOTES[i]]})}
+    return out}
+  function computeBeamGroups(meas,meter){const gu=beamGroupUnit(meter),eps=1e-6;const groups=[];let cg=null,offset=0;function flush(){if(cg&&cg.length>=2)groups.push(cg);cg=null}for(let i=0;i<meas.length;i++){const t=meas[i];const eD=effDur(t);const gi=Math.floor((offset+eps)/gu);const bm=(t.type==='note')&&(t.dur<=0.5+eps);const cr=(offset+eD)>(gi*gu+gu+eps);if(bm&&!cr){if(cg&&cg.startGroup===gi)cg.push(i);else{flush();cg=[i];cg.startGroup=gi}}else flush();offset=+(offset+eD).toFixed(6)}flush();return groups}
+  function staccatoDot(t,cx,headY,stemUp,color){
+    if(!t.orn||!t.orn.includes('.'))return'';
+    // Le point staccato se place du cote oppose a la hampe, contre la tete de note
+    const dy=stemUp?4.5:-4.5;
+    return '<circle cx="'+cx+'" cy="'+(headY+dy)+'" r="1.3" fill="'+color+'"/>';
+  }
+  function escXml(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  function drawNoteHead(t,cx,color,c,drawFlag,stemUp,staffTop,accToDraw){let svg='';const step=stepIndex(t.note,t.octave);const y=noteY(staffTop,step,c);const rs=clefRefStep(c);if(step>=rs+10)for(let s=rs+10;s<=step;s+=2){const ly=noteY(staffTop,s,c);svg+='<line x1="'+(cx-5)+'" y1="'+ly+'" x2="'+(cx+5)+'" y2="'+ly+'" stroke="'+color+'" stroke-width="0.7"/>'}if(step<=rs-2)for(let s=rs-2;s>=step;s-=2){const ly=noteY(staffTop,s,c);svg+='<line x1="'+(cx-5)+'" y1="'+ly+'" x2="'+(cx+5)+'" y2="'+ly+'" stroke="'+color+'" stroke-width="0.7"/>'}const aD=(accToDraw===undefined)?t.acc:accToDraw;if(aD==='^')svg+='<text x="'+(cx-7)+'" y="'+(y+3)+'" font-size="10" fill="'+color+'" font-family="serif" text-anchor="middle">♯</text>';else if(aD==='_')svg+='<text x="'+(cx-7)+'" y="'+(y+3)+'" font-size="10" fill="'+color+'" font-family="serif" text-anchor="middle">♭</text>';else if(aD==='=')svg+='<text x="'+(cx-7)+'" y="'+(y+3)+'" font-size="9" fill="'+color+'" font-family="serif" text-anchor="middle">♮</text>';const eD=nominalDur(t);const filled=eD<2;const hs=eD<4;let fc=0;const bD=t.dur;if(bD<=0.0625+1e-6)fc=4;else if(bD<=0.125+1e-6)fc=3;else if(bD<=0.25+1e-6)fc=2;else if(bD<=0.5+1e-6)fc=1;svg+='<ellipse cx="'+cx+'" cy="'+y+'" rx="3.6" ry="2.7" transform="rotate(-20 '+cx+' '+y+')" fill="'+(filled?color:'none')+'" stroke="'+color+'" stroke-width="0.9"/>';let sy=y,sx=cx;if(hs){sx=stemUp?cx+3.3:cx-3.3;sy=stemUp?y-19:y+19;svg+='<line x1="'+sx+'" y1="'+y+'" x2="'+sx+'" y2="'+sy+'" stroke="'+color+'" stroke-width="0.8"/>';if(drawFlag)for(let f=0;f<fc;f++){const fy=stemUp?(sy+f*4):(sy-f*4);if(stemUp)svg+='<path d="M '+sx+' '+fy+' Q '+(sx+7)+' '+(fy+4)+' '+(sx+4)+' '+(fy+9)+'" stroke="'+color+'" stroke-width="1" fill="none" stroke-linecap="round"/>';else svg+='<path d="M '+sx+' '+fy+' Q '+(sx-7)+' '+(fy-4)+' '+(sx-4)+' '+(fy-9)+'" stroke="'+color+'" stroke-width="1" fill="none" stroke-linecap="round"/>'}}if(t.dot)svg+='<circle cx="'+(cx+7)+'" cy="'+y+'" r="1.2" fill="'+color+'"/>';
+    // Têtes de notes empilées (accord) : même durée, partagent la hampe
+    if(t.stack&&t.stack.length){t.stack.forEach(sn=>{const st2=stepIndex(sn.note,sn.octave);const y2=noteY(staffTop,st2,c);if(st2>=rs+10)for(let s=rs+10;s<=st2;s+=2){const ly=noteY(staffTop,s,c);svg+='<line x1="'+(cx-5)+'" y1="'+ly+'" x2="'+(cx+5)+'" y2="'+ly+'" stroke="'+color+'" stroke-width="0.7"/>'}if(st2<=rs-2)for(let s=rs-2;s>=st2;s-=2){const ly=noteY(staffTop,s,c);svg+='<line x1="'+(cx-5)+'" y1="'+ly+'" x2="'+(cx+5)+'" y2="'+ly+'" stroke="'+color+'" stroke-width="0.7"/>'}const a2=sn.acc;if(a2==='^')svg+='<text x="'+(cx-7)+'" y="'+(y2+3)+'" font-size="10" fill="'+color+'" font-family="serif" text-anchor="middle">♯</text>';else if(a2==='_')svg+='<text x="'+(cx-7)+'" y="'+(y2+3)+'" font-size="10" fill="'+color+'" font-family="serif" text-anchor="middle">♭</text>';else if(a2==='=')svg+='<text x="'+(cx-7)+'" y="'+(y2+3)+'" font-size="9" fill="'+color+'" font-family="serif" text-anchor="middle">♮</text>';svg+='<ellipse cx="'+cx+'" cy="'+y2+'" rx="3.6" ry="2.7" transform="rotate(-20 '+cx+' '+y2+')" fill="'+(filled?color:'none')+'" stroke="'+color+'" stroke-width="0.9"/>';if(t.dot)svg+='<circle cx="'+(cx+7)+'" cy="'+y2+'" r="1.2" fill="'+color+'"/>'})}
+    return{svg,headY:y,stemTipY:sy,stemX:sx,flagCount:fc}}
+  function drawRest(t,cx,color,staffTop){let svg='';const y=staffTop+2*LINE_GAP;const eD=nominalDur(t);if(eD>=4)svg+='<rect x="'+(cx-4.5)+'" y="'+(staffTop+LINE_GAP)+'" width="9" height="3.5" fill="'+color+'"/>';else if(eD>=2)svg+='<rect x="'+(cx-4.5)+'" y="'+(staffTop+2*LINE_GAP-3.5)+'" width="9" height="3.5" fill="'+color+'"/>';else if(eD>=1)svg+='<text x="'+(cx-4)+'" y="'+(staffTop+3*LINE_GAP)+'" font-size="18" font-family="serif" fill="'+color+'">𝄽</text>';else if(eD>=0.5)svg+='<text x="'+(cx-4)+'" y="'+(staffTop+3*LINE_GAP)+'" font-size="18" font-family="serif" fill="'+color+'">𝄾</text>';else if(eD>=0.25)svg+='<text x="'+(cx-4)+'" y="'+(staffTop+3*LINE_GAP)+'" font-size="18" font-family="serif" fill="'+color+'">𝄿</text>';else if(eD>=0.125)svg+='<text x="'+(cx-4)+'" y="'+(staffTop+3*LINE_GAP)+'" font-size="18" font-family="serif" fill="'+color+'">𝅀</text>';else svg+='<text x="'+(cx-4)+'" y="'+(staffTop+3*LINE_GAP)+'" font-size="18" font-family="serif" fill="'+color+'">𝅁</text>';if(t.dot)svg+='<circle cx="'+(cx+7)+'" cy="'+y+'" r="1.2" fill="'+color+'"/>';return{svg,headY:y}}
+
+  // === Cout d'une mesure / d'un en-tete de ligne (niveau module : reutilises par le layout partage) ===
+  function measureCost(mIdx){
+    const meas=state.measures[mIdx];
+    if(!meas||meas.length===0)return 30;
+    const sig=keyAt(mIdx);
+    let nAlt=0;
+    meas.forEach((slot,si)=>{if(slot.type!=='note')return;if(accToDrawFor(meas,si,sig))nAlt++;});
+    let cost=10*meas.length+4*nAlt+10;
+    const r=state.repeats[mIdx];
+    if(r){if(r.start)cost+=6;if(r.end)cost+=8;}
+    if(mIdx>0){
+      // Largeur réservée pour clé/armure/rythme dessinés en début de mesure (doit suivre le rendu).
+      if(clefAt(mIdx)!==clefAt(mIdx-1))cost+=14;
+      if(keyAt(mIdx)!==keyAt(mIdx-1)){
+        const oldA=keySigAccidentals(keyAt(mIdx-1),clefAt(mIdx)).length;
+        const newA=keySigAccidentals(keyAt(mIdx),clefAt(mIdx)).length;
+        // bécarres d'annulation (~oldA) + altérations nouvelles (~newA), 6px chacun, + marge
+        cost+=(oldA+newA)*6+6;
+      }
+      if(meterAt(mIdx)!==meterAt(mIdx-1))cost+=12;
+    }
+    return cost;
+  }
+  function lineHeaderCost(mIdx,isFirstLineOfDoc){
+    const hK=keyAt(mIdx);
+    const hC=clefAt(mIdx);
+    let nNat=0;
+    if(mIdx>0){
+      const prevK=keyAt(mIdx-1);
+      if(prevK!==hK){
+        const oldAccs=keySigAccidentals(prevK,hC);
+        const newSteps=new Set(keySigAccidentals(hK,hC).map(a=>a.step));
+        const sameSign=(prevK>0)===(hK>0);
+        oldAccs.forEach(a=>{ if(!newSteps.has(a.step)||!sameSign)nNat++; });
+      }
+    }
+    const nAccs=keySigAccidentals(hK,hC).length;
+    // positions relatives à LEFT_PAD, fidèles au dessin de l'en-tête :
+    // l'armure démarre à LEFT_PAD-23 ; chaque altération/bécarre = 6px
+    let x = -20 + (nNat+nAccs)*6;          // bord droit de l'armure
+    if(isFirstLineOfDoc){ const mpos=Math.max(x+9,-8); x=mpos+4; }  // métrique (centrée à mpos)
+    x += 8;                                 // marge avant la 1re note
+    return x + 20;                          // firstX = LEFT_PAD + (cost-20) = LEFT_PAD + x
+  }
+  // layout optionnel {single:true,N,widthUnits[],firstX,totalUnits} : mode "une ligne par voix" (Lot 5)
+  // Décalage temporel (en noires) du slot sélectionné depuis le début de SA mesure, dans la voix active.
+  function selTimeOffsetInMeasure(){
+    const sv=state.activeTrack;
+    const m=state.sel.m, s=state.sel.s;
+    const tr=state.tracks[state.activeTrack];
+    const meas=tr&&tr.measures&&tr.measures[m];
+    if(!meas)return 0;
+    let off=0;
+    for(let i=0;i<s&&i<meas.length;i++)off+=effDur(meas[i]);
+    return off;
+  }
+  // Dans une mesure donnée (voix en cours de rendu), index du slot dont l'INTERVALLE de durée
+  // contient le décalage temporel voulu : [début, début+durée). Ainsi une note longue d'une autre
+  // voix reste surlignée tant que le curseur de la voix active reste dans sa durée. -1 si hors mesure.
+  function slotIndexAtTime(meas,targetOff){
+    if(!meas)return -1;
+    const eps=1e-6;let off=0;
+    for(let i=0;i<meas.length;i++){
+      const d=effDur(meas[i]);
+      // début <= t < début+durée  (le dernier slot inclut sa borne de fin pour éviter un trou)
+      if(targetOff>=off-eps && (targetOff<off+d-eps || i===meas.length-1))return i;
+      off+=d;
+    }
+    return -1;
+  }
+  function renderScoreOnce(layout){
+    const selM=state.sel.m;
+    // Note surlignée (rouge) : pendant le play, chaque voix suit sa propre position de lecture ;
+    // sinon, le curseur d'édition (state.sel) SUR LA VOIX ACTIVE. Sur les autres voix, on surligne
+    // le slot qui commence au MÊME instant (décalage temporel), et rien si aucun slot ne tombe pile.
+    const isActiveVoice=(layout&&layout._renderTrack!==undefined&&layout._realActive!==undefined)?(layout._renderTrack===layout._realActive):true;
+    let hlM=state.sel.m,hlS=state.sel.s;
+    if(typeof audio!=='undefined'&&audio.playing){
+      const ph=state._playHL&&state._playHL[state.activeTrack];
+      if(ph){hlM=ph.m;hlS=ph.s;}else{hlM=-1;hlS=-1;}
+    } else if(!isActiveVoice){
+      // Voix non active : surlignage par position temporelle, pas par index.
+      const targetOff=(state._selTimeOff!==undefined)?state._selTimeOff:0;
+      const tr=state.tracks[state.activeTrack];
+      const meas=tr&&tr.measures&&tr.measures[state.sel.m];
+      const si=slotIndexAtTime(meas,targetOff);
+      hlM=state.sel.m;hlS=si; // si=-1 → rien de surligné dans cette voix
+    }
+    const single=!!(layout&&layout.single);
+    // === Calcul dynamique des dimensions selon le conteneur et la taille choisie ===
+    const sw=document.getElementById('score');
+    const cw=sw?sw.clientWidth:600;
+    const chRaw=sw?sw.clientHeight:400;
+    const pxPerUnit=1.8*(state.scoreScale||100)/100;
+    const viewW=Math.max(200,cw/pxPerUnit);
+    const viewH=Math.max(100,chRaw/pxPerUnit);
+    // Espacement vertical effectif : on agrandit l'inter-portée pour loger les couplets
+    // supplémentaires sous chaque système (1 ligne de paroles ~ 10px).
+    const LYRIC_ROW=10;
+    const nVerses=state.viewFlags.lyrics?countVersesTrack(state.measures):1;
+    // Décalage vertical des paroles réglable par l'utilisateur (0 = position par défaut).
+    // Positif = paroles plus bas (on réserve alors de la place pour ne pas chevaucher le système suivant).
+    const lyricOff=state.lyricOffset||0;
+    const STAFF_SP=STAFF_SPACING+Math.max(0,nVerses-1)*LYRIC_ROW+(state.viewFlags.lyrics?Math.max(0,lyricOff):0);
+    // Nb max de lignes (selon hauteur disponible) — utilisé par l'ancien mode multi-lignes seulement
+    const linesMax=Math.max(1,Math.floor((viewH-STAFF_TOP_Y-10)/STAFF_SP));
+    const SCORE_W=single?layout.totalUnits:viewW;
+    const usableLineW=SCORE_W-LEFT_PAD-RIGHT_PAD;
+    const N=single?layout.N:state.measures.length;
+    // === Regroupement des mesures en lignes ===
+    const allLines=[];
+    if(single){
+      const idxs=[];for(let k=0;k<N;k++)idxs.push(k);
+      allLines.push({mIdxs:idxs,totalCost:0});
+    } else {
+    let cur={mIdxs:[],totalCost:0};
+    let isFirstLineOfDoc=true;
+    for(let mi=0;mi<N;mi++){
+      const c=measureCost(mi);
+      const headerCost=cur.mIdxs.length===0?lineHeaderCost(mi,isFirstLineOfDoc):0;
+      if(cur.mIdxs.length>0&&cur.totalCost+c+headerCost>usableLineW){
+        // Cette mesure ne rentre plus, on finalise la ligne courante
+        allLines.push(cur);
+        cur={mIdxs:[],totalCost:0};
+        isFirstLineOfDoc=false;
+      }
+      cur.mIdxs.push(mi);
+      const headerC=cur.mIdxs.length===1?lineHeaderCost(mi,isFirstLineOfDoc):0;
+      cur.totalCost+=c+headerC;
+    }
+    if(cur.mIdxs.length>0)allLines.push(cur);
+    }
+    if(allLines.length===0)allLines.push({mIdxs:[],totalCost:0});
+    // === Trouver la page contenant selM ===
+    let pageStart,pageLines,linesShown;
+    if(single){
+      pageStart=0;pageLines=allLines;linesShown=1;
+    } else {
+    let lineOfSel=0;
+    for(let li=0;li<allLines.length;li++){
+      if(allLines[li].mIdxs.includes(selM)){lineOfSel=li;break}
+    }
+    pageStart=Math.floor(lineOfSel/linesMax)*linesMax;
+    const pageEnd=Math.min(allLines.length,pageStart+linesMax);
+    pageLines=allLines.slice(pageStart,pageEnd);
+    linesShown=Math.max(1,pageLines.length);
+    }
+    const ink='#1a1a1a',sel='#e24b4a',dim='#888780';
+    const scoreH=STAFF_TOP_Y+linesShown*STAFF_SP+10;
+    let svg='<svg viewBox="0 0 '+SCORE_W+' '+scoreH+'" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet">';
+    // === Scale de reference : on prend le scale des lignes "pleines" (le plus petit) ===
+    // pour ne pas etaler les mesures de la derniere ligne incomplete sur toute la largeur.
+    let refScale=Infinity;
+    for(let li=0;li<pageLines.length;li++){
+      const ld=pageLines[li];
+      if(!ld||ld.mIdxs.length===0)continue;
+      const costs=ld.mIdxs.map(mi=>measureCost(mi));
+      const hC2=lineHeaderCost(ld.mIdxs[0],pageStart===0&&li===0);
+      const avail=usableLineW-hC2+20;
+      const sum=costs.reduce((a,b)=>a+b,0)||1;
+      const sc=avail/sum;
+      if(sc<refScale)refScale=sc;
+    }
+    if(!isFinite(refScale)||refScale<=0)refScale=1;
+    for(let line=0;line<linesShown;line++){
+      const lineData=pageLines[line];
+      if(!lineData||lineData.mIdxs.length===0)continue;
+      const staffTop=STAFF_TOP_Y+line*STAFF_SP;
+      const lsm=lineData.mIdxs[0];
+      const isFirstDocLine=(pageStart===0&&line===0);
+      // 5 lignes de portee
+      for(let i=0;i<5;i++){
+        const y=staffTop+i*LINE_GAP;
+        svg+='<line x1="'+(LEFT_PAD-25)+'" y1="'+y+'" x2="'+(SCORE_W-RIGHT_PAD)+'" y2="'+y+'" stroke="'+ink+'" stroke-width="0.55" opacity="0.55"/>';
+      }
+      const hC=clefAt(lsm),hK=keyAt(lsm),hM=meterAt(lsm);
+      // Cle
+      if(hC==='bass'){
+        svg+='<text x="'+(LEFT_PAD-32)+'" y="'+(staffTop+2.6*LINE_GAP+5)+'" font-size="22" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle">𝄢</text>';
+      } else if(hC==='alto'||hC==='tenor'){
+        const cy=staffTop+(hC==='alto'?2:1)*LINE_GAP;
+        svg+='<text x="'+(LEFT_PAD-32)+'" y="'+cy+'" font-size="21" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle" dominant-baseline="central">𝄡</text>';
+      } else {
+        svg+='<text x="'+(LEFT_PAD-32)+'" y="'+(staffTop+2.4*LINE_GAP+5)+'" font-size="26" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle">𝄞</text>';
+        if(hC==='treble8'){
+          svg+='<text x="'+(LEFT_PAD-32)+'" y="'+(staffTop+4.6*LINE_GAP+5)+'" font-size="7" fill="'+ink+'" opacity="0.85" text-anchor="middle">8</text>';
+        }
+      }
+      // Armure
+      let kx=LEFT_PAD-16;
+      keySigAccidentals(hK,hC).forEach(a=>{
+        const ky=noteY(staffTop,a.step,hC)+4;
+        svg+='<text x="'+kx+'" y="'+ky+'" font-size="12" font-family="serif" fill="'+ink+'">'+a.sym+'</text>';
+        kx+=6;
+      });
+      // Metrique (uniquement sur la premiere ligne du document)
+      if(isFirstDocLine){
+        const{num,den}=parseMeter(hM);
+        const mx=Math.max(kx+3,LEFT_PAD-10);
+        svg+='<text x="'+mx+'" y="'+(staffTop+1.7*LINE_GAP+1)+'" font-size="12" font-family="serif" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+num+'</text>';
+        svg+='<text x="'+mx+'" y="'+(staffTop+3.6*LINE_GAP+1)+'" font-size="12" font-family="serif" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+den+'</text>';
+      }
+      // Positions cumulatives de chaque mesure (xL,xR)
+      const measureBounds=[];
+      if(single){
+        let curX=layout.firstX;
+        for(let i=0;i<lineData.mIdxs.length;i++){
+          const mi=lineData.mIdxs[i];
+          const w=layout.widthUnits[mi];
+          measureBounds.push({xL:curX,xR:curX+w,measureW:w});
+          curX+=w;
+        }
+      } else {
+      const measureCosts=lineData.mIdxs.map(mi=>measureCost(mi));
+      const headerC=lineHeaderCost(lsm,isFirstDocLine);
+      const availableForMeasures=usableLineW-headerC+20; // recuperer la marge fixe deja comptee dans header
+      const sumCosts=measureCosts.reduce((a,b)=>a+b,0)||1;
+      // On n'etire jamais au-dela de la densite des lignes pleines : la derniere ligne incomplete
+      // garde la meme echelle et reste alignee a gauche au lieu de s'etaler sur toute la largeur.
+      const lineScale=Math.min(availableForMeasures/sumCosts, refScale);
+      let curX=LEFT_PAD+headerC-20; // commence apres l'header (le 20 etait deja dans le cost de base)
+      for(let i=0;i<lineData.mIdxs.length;i++){
+        const w=measureCosts[i]*lineScale;
+        measureBounds.push({xL:curX,xR:curX+w,measureW:w});
+        curX+=w;
+      }
+      }
+      // Dessiner les barres de mesure
+      for(let i=0;i<=lineData.mIdxs.length;i++){
+        const x=(i===0)?measureBounds[0].xL:measureBounds[i-1].xR;
+        svg+='<line x1="'+x+'" y1="'+staffTop+'" x2="'+x+'" y2="'+(staffTop+4*LINE_GAP)+'" stroke="'+ink+'" stroke-width="'+(i===0?1.1:0.7)+'" opacity="0.7"/>';
+      }
+      // Repères de mise en page (fin de ligne / fin de page) — affichés sur la voix active seulement.
+      if(isActiveVoice&&state.breaks){
+        for(let i=0;i<lineData.mIdxs.length;i++){
+          const mIdx=lineData.mIdxs[i];const br=state.breaks[mIdx];if(!br)continue;
+          const xR=measureBounds[i].xR;const yTop=staffTop-2;
+          if(br.page){
+            // double chevron vers le bas = fin de page
+            svg+='<text x="'+(xR-3)+'" y="'+(yTop-3)+'" font-size="11" fill="#185fa5" text-anchor="end">⤓</text>';
+          } else if(br.line){
+            svg+='<text x="'+(xR-3)+'" y="'+(yTop-3)+'" font-size="11" fill="#185fa5" text-anchor="end">⏎</text>';
+          }
+        }
+      }
+      // Etat partage pour les liaisons traversant les mesures de la ligne
+      let pS=null;
+      const tP=[];
+      const sP=[];           // arcs de slur (phrasé), un par chaîne continue
+      const pendP=[];        // liaisons « en attente » (linkToNext sans note suivante) → arc pointillé
+      let slurStart=null;    // {cx,y} de la première note de la chaîne de slur en cours
+      let slurLast=null;     // {cx,y} de la dernière note vue dans la chaîne
+      let pendingIncomingTie=false;
+      // Gère la chaîne de slur : appelée pour chaque note avec sa position.
+      // prevHadSlur = la note précédente avait slurToNext (donc lien actif vers celle-ci).
+      function handleSlur(prevHadSlur,cx,y,thisHasSlur,su){
+        if(prevHadSlur){ if(!slurStart)slurStart=slurLast||{cx,y,su}; slurLast={cx,y,su}; }
+        else { // pas de lien entrant : fermer la chaîne précédente s'il y en a une
+          if(slurStart&&slurLast){sP.push({fromCx:slurStart.cx,fromY:slurStart.y,toCx:slurLast.cx,toY:slurLast.y,stemUp:slurStart.su})}
+          slurStart=null;slurLast={cx,y,su};
+        }
+        if(thisHasSlur&&!slurStart)slurStart={cx,y,su}; // cette note ouvre une chaîne
+      }
+      if(lsm>0){
+        const prevM=state.measures[lsm-1];
+        if(prevM){
+          for(let k=prevM.length-1;k>=0;k--){
+            const s=prevM[k];
+            if(s.type==='note'){if(s.tieToNext)pendingIncomingTie=true;break}
+          }
+        }
+      }
+      for(let i=0;i<lineData.mIdxs.length;i++){
+        const mIdx=lineData.mIdxs[i];
+        if(state.measures[mIdx]===undefined)continue;
+        const xL=measureBounds[i].xL;
+        const xR=measureBounds[i].xR;
+        const measureW=measureBounds[i].measureW;
+        // Reprises et voltas
+        const r=state.repeats[mIdx];
+        if(r){
+          if(r.start){
+            svg+='<line x1="'+(xL+2)+'" y1="'+staffTop+'" x2="'+(xL+2)+'" y2="'+(staffTop+4*LINE_GAP)+'" stroke="'+ink+'" stroke-width="2"/>';
+            svg+='<circle cx="'+(xL+6)+'" cy="'+(staffTop+1.5*LINE_GAP)+'" r="1.1" fill="'+ink+'"/>';
+            svg+='<circle cx="'+(xL+6)+'" cy="'+(staffTop+2.5*LINE_GAP)+'" r="1.1" fill="'+ink+'"/>';
+          }
+          if(r.end){
+            svg+='<circle cx="'+(xR-6)+'" cy="'+(staffTop+1.5*LINE_GAP)+'" r="1.1" fill="'+ink+'"/>';
+            svg+='<circle cx="'+(xR-6)+'" cy="'+(staffTop+2.5*LINE_GAP)+'" r="1.1" fill="'+ink+'"/>';
+            svg+='<line x1="'+(xR-2)+'" y1="'+staffTop+'" x2="'+(xR-2)+'" y2="'+(staffTop+4*LINE_GAP)+'" stroke="'+ink+'" stroke-width="2"/>';
+          }
+          if(r.volta){
+            const yV=staffTop-11;
+            svg+='<line x1="'+(xL+2)+'" y1="'+yV+'" x2="'+(xR-2)+'" y2="'+yV+'" stroke="'+ink+'" stroke-width="0.8"/>';
+            svg+='<line x1="'+(xL+2)+'" y1="'+yV+'" x2="'+(xL+2)+'" y2="'+(yV+4)+'" stroke="'+ink+'" stroke-width="0.8"/>';
+            svg+='<text x="'+(xL+5)+'" y="'+(yV+6)+'" font-size="8" fill="'+ink+'" font-weight="bold">'+r.volta+'.</text>';
+          }
+        }
+        const m=state.measures[mIdx];
+        const lC=clefAt(mIdx),lM=meterAt(mIdx);
+        let changeOffset=0;
+        let rightInset=0;
+        // Reprise gauche : prendre en compte la place des points/barre epaisse
+        if(r&&r.start)changeOffset=Math.max(changeOffset,6);
+        // Reprise droite : reduire l'espace utile a droite
+        if(r&&r.end)rightInset=8;
+        if(i>0){
+          const prevClef=clefAt(mIdx-1);
+          const prevKey=keyAt(mIdx-1);
+          const prevMeter=meterAt(mIdx-1);
+          const hasClefChange=lC!==prevClef;
+          const hasKeyChange=keyAt(mIdx)!==prevKey;
+          const hasMeterChange=lM!==prevMeter;
+          if(hasClefChange||hasKeyChange||hasMeterChange){
+            let cx=xL+3+changeOffset;
+            // Cle (en premier, juste apres la barre)
+            if(hasClefChange){
+              cx+=5;
+              if(lC==='bass'){
+                svg+='<text x="'+cx+'" y="'+(staffTop+2.6*LINE_GAP+4)+'" font-size="18" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle">𝄢</text>';
+              } else if(lC==='alto'||lC==='tenor'){
+                const cyy=staffTop+(lC==='alto'?2:1)*LINE_GAP;
+                svg+='<text x="'+cx+'" y="'+cyy+'" font-size="17" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle" dominant-baseline="central">𝄡</text>';
+              } else {
+                svg+='<text x="'+cx+'" y="'+(staffTop+2.4*LINE_GAP+4)+'" font-size="21" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle">𝄞</text>';
+                if(lC==='treble8')svg+='<text x="'+(cx+3)+'" y="'+(staffTop+4.6*LINE_GAP+4)+'" font-size="6" fill="'+ink+'" opacity="0.85" text-anchor="middle">8</text>';
+              }
+              cx+=8;
+            }
+            // Armure
+            if(hasKeyChange){
+              if(hasClefChange)cx+=2;
+              const newSig=keyAt(mIdx);
+              // Bécarres d'annulation : altérations présentes dans l'ANCIENNE armure et absentes
+              // de la nouvelle (notamment quand on revient à une armure vide). Affichés AVANT.
+              const oldAccs=keySigAccidentals(prevKey,lC);
+              const newAccs=keySigAccidentals(newSig,lC);
+              const newSteps=new Set(newAccs.map(a=>a.step));
+              const sameSign=(prevKey>0)===(newSig>0);
+              oldAccs.forEach(a=>{
+                // si la note n'est plus altérée dans la nouvelle armure (ou changement de sens ♯↔♭), bécarre
+                if(!newSteps.has(a.step)||!sameSign){
+                  const ny=noteY(staffTop,a.step,lC)+3;
+                  svg+='<text x="'+cx+'" y="'+ny+'" font-size="11" font-family="serif" fill="'+ink+'">♮</text>';
+                  cx+=6;
+                }
+              });
+              // Puis les altérations de la nouvelle armure
+              newAccs.forEach(a=>{
+                const ky=noteY(staffTop,a.step,lC)+4;
+                svg+='<text x="'+cx+'" y="'+ky+'" font-size="11" font-family="serif" fill="'+ink+'">'+a.sym+'</text>';
+                cx+=6;
+              });
+              cx+=3;
+            }
+            // Rythme
+            if(hasMeterChange){
+              if(hasClefChange||hasKeyChange)cx+=2;
+              const{num,den}=parseMeter(lM);
+              cx+=4;
+              svg+='<text x="'+cx+'" y="'+(staffTop+1.8*LINE_GAP+1)+'" font-size="10" font-family="serif" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+num+'</text>';
+              svg+='<text x="'+cx+'" y="'+(staffTop+3.6*LINE_GAP+1)+'" font-size="10" font-family="serif" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+den+'</text>';
+              cx+=7;
+            }
+            // Marge supplementaire avant la premiere note
+            cx+=4;
+            // Espace consomme depuis xL
+            changeOffset=cx-xL;
+          }
+        }
+        const x0=xL+6+changeOffset;
+        const usableW=measureW-10-changeOffset-rightInset;
+        // Largeur ideale par slot : 10 unites pour une note normale, 14 unites si elle a une alteration
+        const slotWidth=m.map((slot,si)=>{
+          if(slot.type!=='note')return 10;
+          const accD=accToDrawFor(m,si,keyAt(mIdx));
+          return accD?14:10;
+        });
+        const sumW=slotWidth.reduce((a,b)=>a+b,0)||1;
+        // Mise a l'echelle : compresse ou dilate pour remplir exactement usableW
+        const scale=usableW/sumW;
+        // Position cumulative : centre de chaque slot au milieu de sa largeur (apres scale)
+        const cxBySlot=new Array(m.length);
+        const wBySlot=new Array(m.length);
+        let cum=0;
+        for(let si=0;si<m.length;si++){
+          const w=slotWidth[si]*scale;
+          cxBySlot[si]=x0+cum+w/2;
+          wBySlot[si]=w;
+          cum+=w;
+        }
+        // sW de reference (utilise pour les boites de selection)
+        const sW=usableW/Math.max(m.length,1);
+        const bg=computeBeamGroups(m,lM);
+        const sTG={};
+        bg.forEach((g,gi)=>{g.forEach(si=>sTG[si]={gIdx:gi,group:g})});
+        const mS=clefRefStep(lC)+4;
+        const gSD=bg.map(g=>{
+          let s=0;
+          for(const idx of g){const t=m[idx];s+=stepIndex(t.note,t.octave)}
+          return(s/g.length)<mS?'up':'down';
+        });
+        const gBD=bg.map((g,gi)=>{
+          const su=gSD[gi]==='up';
+          let eY=su?Infinity:-Infinity;
+          const sX=[];
+          g.forEach(si=>{
+            const t=m[si];
+            const cx=cxBySlot[si];
+            const sx=su?cx+3.3:cx-3.3;
+            const hY=noteY(staffTop,stepIndex(t.note,t.octave),lC);
+            const nT=su?hY-19:hY+19;
+            if(su)eY=Math.min(eY,nT);else eY=Math.max(eY,nT);
+            sX.push({slotIdx:si,sx,headY:hY});
+          });
+          return{stemUp:su,beamY:eY,stems:sX};
+        });
+        m.forEach((t,si)=>{
+          const cx=cxBySlot[si];
+          // Rectangle cliquable invisible sur toute la zone du slot (selection par clic)
+          svg+='<rect x="'+(cx-wBySlot[si]/2)+'" y="'+staffTop+'" width="'+wBySlot[si]+'" height="'+(4*LINE_GAP+20)+'" fill="transparent" pointer-events="all" data-m="'+mIdx+'" data-s="'+si+'" style="cursor:pointer"/>';
+          const iS=(mIdx===hlM&&si===hlS);
+          const cl=iS?sel:ink;
+          if(t.chord&&state.viewFlags.chords)svg+='<text x="'+cx+'" y="'+(staffTop-3)+'" font-size="9" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+escXml(t.chord)+'</text>';
+          if(t.text&&state.viewFlags.text)svg+='<text x="'+cx+'" y="'+(staffTop-(t.chord&&state.viewFlags.chords?13:3))+'" font-size="6" font-style="italic" fill="'+ink+'" text-anchor="middle">'+escXml(t.text)+'</text>';
+          if(t.orn&&t.orn.length){
+            const ot=t.orn.filter(o=>o!=='.').map(o=>{if(o==='~')return'tr';if(o==='T')return'tr';if(o==='M')return'∼';if(o==='P')return'∿';if(o==='H')return'𝄐';if(o==='L')return'>';if(o==='u')return'⋁';if(o==='v')return'⊓';if(o==='O')return'⊕';return o}).join(' ');
+            if(ot)svg+='<text x="'+cx+'" y="'+(staffTop-12)+'" font-size="8" font-style="italic" fill="'+ink+'" text-anchor="middle">'+ot+'</text>';
+          }
+          if(t.type==='note'){
+            const gp=sTG[si];
+            if(gp){
+              const gi=gp.gIdx;
+              const su=gSD[gi]==='up';
+              const bY=gBD[gi].beamY;
+              const dr=drawNoteHead(t,cx,cl,lC,false,su,staffTop,accToDrawFor(m,si,keyAt(mIdx)));
+              const sx=dr.stemX,hY=dr.headY;
+              svg+=dr.svg;
+              svg+=staccatoDot(t,cx,dr.headY,su,cl);
+              svg+='<line x1="'+sx+'" y1="'+hY+'" x2="'+sx+'" y2="'+bY+'" stroke="'+cl+'" stroke-width="0.8"/>';
+              if(iS&&!(state._chordEditMode&&state._chordAddPending))svg+='<circle cx="'+cx+'" cy="'+dr.headY+'" r="8" fill="none" stroke="'+sel+'" stroke-width="0.7" opacity="0.4"/>';
+              if(iS&&state._chordEditMode&&!state._chordAddPending){const ac=activeChordNote(t);if(ac){const ay=noteY(staffTop,stepIndex(ac.note,ac.octave),lC);svg+='<circle cx="'+cx+'" cy="'+ay+'" r="5" fill="none" stroke="#d11" stroke-width="1.4"/>';}}
+              if(pS&&pS.t.tieToNext){const _su=(pS.su!==undefined?pS.su:su);const _ys=sharedTieYs(pS.t,t,staffTop,lC);if(_ys.length){_ys.forEach(_y=>tP.push({fromCx:pS.cx,fromY:_y,toCx:cx,toY:_y,stemUp:_su}));}else{tP.push({fromCx:pS.cx,fromY:pS.y,toCx:cx,toY:dr.headY,stemUp:_su});}}
+              if(pendingIncomingTie){tP.push({fromCx:LEFT_PAD-6,fromY:dr.headY,toCx:cx,toY:dr.headY,partial:'in',stemUp:su});pendingIncomingTie=false}
+              handleSlur(!!(pS&&pS.t.slurToNext),cx,dr.headY,!!t.slurToNext,su);
+              pS={t,cx,y:dr.headY,su};
+            } else {
+              const st=stepIndex(t.note,t.octave);
+              const su=st<mS;
+              const dr=drawNoteHead(t,cx,cl,lC,true,su,staffTop,accToDrawFor(m,si,keyAt(mIdx)));
+              svg+=dr.svg;
+              svg+=staccatoDot(t,cx,dr.headY,su,cl);
+              if(iS&&!(state._chordEditMode&&state._chordAddPending))svg+='<circle cx="'+cx+'" cy="'+dr.headY+'" r="8" fill="none" stroke="'+sel+'" stroke-width="0.7" opacity="0.4"/>';
+              if(iS&&state._chordEditMode&&!state._chordAddPending){const ac=activeChordNote(t);if(ac){const ay=noteY(staffTop,stepIndex(ac.note,ac.octave),lC);svg+='<circle cx="'+cx+'" cy="'+ay+'" r="5" fill="none" stroke="#d11" stroke-width="1.4"/>';}}
+              if(pS&&pS.t.tieToNext){const _su=(pS.su!==undefined?pS.su:su);const _ys=sharedTieYs(pS.t,t,staffTop,lC);if(_ys.length){_ys.forEach(_y=>tP.push({fromCx:pS.cx,fromY:_y,toCx:cx,toY:_y,stemUp:_su}));}else{tP.push({fromCx:pS.cx,fromY:pS.y,toCx:cx,toY:dr.headY,stemUp:_su});}}
+              if(pendingIncomingTie){tP.push({fromCx:LEFT_PAD-6,fromY:dr.headY,toCx:cx,toY:dr.headY,partial:'in',stemUp:su});pendingIncomingTie=false}
+              handleSlur(!!(pS&&pS.t.slurToNext),cx,dr.headY,!!t.slurToNext,su);
+              pS={t,cx,y:dr.headY,su};
+            }
+            // Liaison « en attente » : intention posée mais ni tie ni slur résolu (pas de note à droite)
+            if(t.linkToNext&&!t.tieToNext&&!t.slurToNext&&pS){pendP.push({cx:pS.cx,y:pS.y});}
+          } else {
+            const dr=drawRest(t,cx,cl,staffTop);
+            svg+=dr.svg;
+            if(iS&&!(state._chordEditMode&&state._chordAddPending))svg+='<circle cx="'+cx+'" cy="'+dr.headY+'" r="8" fill="none" stroke="'+sel+'" stroke-width="0.7" opacity="0.4"/>';
+            // Silences cassent les liaisons
+            if(slurStart&&slurLast){sP.push({fromCx:slurStart.cx,fromY:slurStart.y,toCx:slurLast.cx,toY:slurLast.y,stemUp:slurStart.su})}
+            slurStart=null;slurLast=null;
+            pS=null;
+          }
+          if(t.tuplet&&(si===0||!m[si-1]||!m[si-1].tuplet||m[si-1].tupletId!==t.tupletId)){
+            const gs=[];
+            for(let j=si;j<m.length&&m[j].tupletId===t.tupletId&&gs.length<t.tuplet;j++)gs.push(j);
+            if(gs.length>0){
+              const cF=x0+gs[0]*sW+sW/2;
+              const cL=x0+gs[gs.length-1]*sW+sW/2;
+              const cM=(cF+cL)/2;
+              // Crochet du n-uplet (au-dessus de la portee)
+              const yT=staffTop-6;
+              svg+='<line x1="'+cF+'" y1="'+yT+'" x2="'+cL+'" y2="'+yT+'" stroke="'+ink+'" stroke-width="0.7"/>';
+              svg+='<line x1="'+cF+'" y1="'+yT+'" x2="'+cF+'" y2="'+(yT+3)+'" stroke="'+ink+'" stroke-width="0.7"/>';
+              svg+='<line x1="'+cL+'" y1="'+yT+'" x2="'+cL+'" y2="'+(yT+3)+'" stroke="'+ink+'" stroke-width="0.7"/>';
+              svg+='<text x="'+cM+'" y="'+(yT-1)+'" font-size="8" font-style="italic" fill="'+ink+'" text-anchor="middle" font-weight="bold">'+t.tuplet+'</text>';
+            }
+          }
+          if(si===0){
+            if(state.viewFlags.measureNums)svg+='<text x="'+(xL+2)+'" y="'+(staffTop-3)+'" font-size="8" fill="'+dim+'">'+String(mIdx+1)+'</text>';
+            if(state.viewFlags.parts&&state.parts&&state.parts[mIdx])svg+='<text x="'+(xL+2)+'" y="'+(staffTop-14)+'" font-size="11" font-weight="bold" fill="'+ink+'">'+escXml(state.parts[mIdx])+'</text>';
+            // Indication de tempo : mesure 0 (tempo initial) ou toute mesure avec changement.
+            // Affichée sur la voix VISIBLE LA PLUS HAUTE (pas forcément la voix active).
+            const tc=state.tempoChanges||{};
+            const isTopVoice=(layout&&layout._topVisible!==undefined&&layout._renderTrack!==undefined)?(layout._renderTrack===layout._topVisible):isActiveVoice;
+            if((mIdx===0||tc[mIdx]!==undefined)&&isTopVoice){
+              const bpm=Math.round(tempoAt(mIdx)/beatQuarters());
+              // y normalement au-dessus de la portée ; sur la 1re ligne l'espace est réduit (viewBox
+              // commence à 0), donc on borne à une valeur VISIBLE. On décale aussi en x pour ne pas
+              // chevaucher le numéro de mesure / la lettre de partie.
+              const tyTempo=Math.max(8,staffTop-23);
+              const hasPart=!!(state.viewFlags.parts&&state.parts&&state.parts[mIdx]);
+              // si l'espace au-dessus est resserré (1re ligne) OU si une lettre de partie occupe déjà
+              // la zone, on décale le tempo à droite pour éviter tout chevauchement.
+              const cramped=(tyTempo>=staffTop-14);
+              let txTempo=xL+2;
+              if(cramped||hasPart)txTempo=xL+(hasPart?28:16);
+              svg+='<text x="'+txTempo+'" y="'+tyTempo+'" font-size="10" font-weight="bold" font-family="serif" fill="'+ink+'">'+beatGlyph()+'='+bpm+'</text>';
+            }
+          }
+          if(t.type==='note'&&state.viewFlags.lyrics){
+            for(let v=1;v<=nVerses;v++){
+              const raw=verseSyl(t,v);
+              if(!raw)continue;
+              const showDash=/-+$/.test(raw);
+              // Le tiret FINAL de continuation est dessiné séparément à droite : on retire TOUS les
+              // tirets finaux du texte (données héritées pouvant en contenir plusieurs → « li-- »).
+              // Les tirets internes (bon-jour) restent.
+              const core=raw.replace(/-+$/,'');
+              const lyricDisplay=core.replace(/_/g,'').replace(/~/g,' ');
+              const ly=staffTop+4*LINE_GAP+13+lyricOff+(v-1)*LYRIC_ROW;
+              svg+='<text x="'+cx+'" y="'+ly+'" font-size="9" fill="'+ink+'" text-anchor="middle" font-family="sans-serif">'+escXml(lyricDisplay)+'</text>';
+              if(showDash)svg+='<text x="'+(cx+5)+'" y="'+ly+'" font-size="9" fill="'+dim+'" text-anchor="start" font-family="sans-serif">-</text>';
+            }
+          }
+          // Zone cliquable invisible pour selectionner ce slot
+          svg+='<rect x="'+(cx-sW/2)+'" y="'+(staffTop-12)+'" width="'+sW+'" height="'+(LINE_GAP*4+24)+'" fill="transparent" style="cursor:pointer" data-m="'+mIdx+'" data-s="'+si+'"/>';
+        });
+        // Beams pour cette mesure : niveau 1 complet, niveaux 2/3 partiels selon notes
+        bg.forEach((g,gi)=>{
+          const d=gBD[gi];const su=d.stemUp;const bY=d.beamY;const sts=d.stems;
+          const bT=2.5;
+          const dyO=su?bT+0.8:-(bT+0.8);
+          // Niveau de chaque note du groupe (1=croche, 2=double, 3=triple)
+          // On utilise la duree de base (sans point ni n-uplet) pour decider le nombre de barres
+          const lvls=g.map(idx=>{
+            const bD=m[idx].dur;
+            if(bD<=0.0625+1e-6)return 4;
+            if(bD<=0.125+1e-6)return 3;
+            if(bD<=0.25+1e-6)return 2;
+            return 1;
+          });
+          // sX = position x de chaque hampe (ordre = ordre du groupe)
+          const xPos=sts.map(s=>s.sx);
+          const xS=xPos[0],xE=xPos[xPos.length-1];
+          // Barre principale (niveau 1) : toute la largeur du groupe
+          {
+            const yy=bY;
+            svg+='<rect x="'+xS+'" y="'+(yy-bT/2)+'" width="'+(xE-xS)+'" height="'+bT+'" fill="'+ink+'"/>';
+          }
+          // Niveaux 2, 3 et 4 : segments entre notes consecutives de meme niveau, demi-barres pour les isolees
+          for(let lvl=2;lvl<=4;lvl++){
+            const yy=bY+(lvl-1)*dyO;
+            // 1) Segments connectes : entre i et i+1 si les deux ont niveau >= lvl
+            const connected=new Array(xPos.length).fill(false);
+            for(let i=0;i<xPos.length-1;i++){
+              if(lvls[i]>=lvl&&lvls[i+1]>=lvl){
+                svg+='<rect x="'+xPos[i]+'" y="'+(yy-bT/2)+'" width="'+(xPos[i+1]-xPos[i])+'" height="'+bT+'" fill="'+ink+'"/>';
+                connected[i]=true;connected[i+1]=true;
+              }
+            }
+            // 2) Demi-barres pour les notes de niveau >= lvl qui ne sont pas connectees
+            for(let i=0;i<xPos.length;i++){
+              if(lvls[i]>=lvl&&!connected[i]){
+                // Longueur de demi-barre : ~40% de la distance au voisin du meme groupe
+                let halfLen;
+                if(i===0){
+                  // Demi-barre vers la droite
+                  halfLen=Math.max(3,(xPos[1]-xPos[0])*0.4);
+                  svg+='<rect x="'+xPos[i]+'" y="'+(yy-bT/2)+'" width="'+halfLen+'" height="'+bT+'" fill="'+ink+'"/>';
+                } else {
+                  // Demi-barre vers la gauche
+                  halfLen=Math.max(3,(xPos[i]-xPos[i-1])*0.4);
+                  svg+='<rect x="'+(xPos[i]-halfLen)+'" y="'+(yy-bT/2)+'" width="'+halfLen+'" height="'+bT+'" fill="'+ink+'"/>';
+                }
+              }
+            }
+          }
+        });
+      }
+      // Liaison sortante : si la derniere note de la ligne a tieToNext
+      if(pS&&pS.t.tieToNext){
+        tP.push({fromCx:pS.cx,fromY:pS.y,toCx:SCORE_W-RIGHT_PAD+4,toY:pS.y,partial:'out'});
+      }
+      // Fermer la chaîne de slur en cours en fin de ligne
+      if(slurStart&&slurLast&&slurStart.cx!==slurLast.cx){sP.push({fromCx:slurStart.cx,fromY:slurStart.y,toCx:slurLast.cx,toY:slurLast.y,stemUp:slurStart.su})}
+      slurStart=null;slurLast=null;
+      // Dessiner toutes les liaisons de durée (tie) de la ligne.
+      // Règle : la liaison s'incurve à l'OPPOSÉ des tiges (tiges en haut → liaison en dessous, ouvrant
+      // vers le haut ; tiges en bas → liaison au-dessus). Écart suffisant des têtes pour ne pas coller.
+      tP.forEach(tp=>{
+        const cx=(tp.fromCx+tp.toCx)/2;
+        const below=(tp.stemUp!==false); // par défaut tiges en haut → liaison en dessous
+        const gap=5;          // écart vertical départ/arrivée par rapport à la tête
+        const bow=7;          // hauteur de la courbure
+        const y1=tp.fromY+(below?gap:-gap);
+        const y2=tp.toY+(below?gap:-gap);
+        // sommet de l'arc du bon côté ; sur grand écart de hauteur on suit la pente entre les deux têtes
+        const cy=((y1+y2)/2)+(below?bow:-bow);
+        const x1=tp.fromCx+3, x2=tp.toCx-3;
+        svg+='<path d="M '+x1+' '+y1+' Q '+cx+' '+cy+' '+x2+' '+y2+'" stroke="'+ink+'" stroke-width="0.9" fill="none"/>';
+      });
+      // Slurs (phrasé) : un seul arc par chaîne, du côté opposé aux tiges, en épousant le grand écart.
+      sP.forEach(sp=>{
+        const cx=(sp.fromCx+sp.toCx)/2;
+        const below=(sp.stemUp===false); // tiges en bas → slur au-dessus ; sinon au-dessus aussi par défaut
+        // Convention lisible : slur au-DESSUS par défaut (tiges en haut), en dessous si tiges en bas.
+        const above=!below;
+        const gap=5, bow=10;
+        const y1=sp.fromY+(above?-gap:gap);
+        const y2=sp.toY+(above?-gap:gap);
+        // Sur grand intervalle, le sommet se cale sur la tête la plus extrême du bon côté.
+        const extreme=above?Math.min(y1,y2):Math.max(y1,y2);
+        const cy=extreme+(above?-bow:bow);
+        svg+='<path d="M '+(sp.fromCx+1)+' '+y1+' Q '+cx+' '+cy+' '+(sp.toCx-1)+' '+y2+'" stroke="'+ink+'" stroke-width="1.1" fill="none" stroke-linecap="round"/>';
+      });
+      // Liaisons « en attente » : petit arc pointillé bleu sortant de la note (aucune note à droite encore)
+      pendP.forEach(pp=>{
+        const x2=pp.cx+12;
+        svg+='<path d="M '+(pp.cx+3)+' '+(pp.y+3)+' Q '+(pp.cx+8)+' '+(pp.y+8)+' '+x2+' '+(pp.y+3)+'" stroke="#185fa5" stroke-width="1" fill="none" stroke-dasharray="2 2" opacity="0.9"/>';
+      });
+    }
+    svg+='</svg>';
+    return svg;
+  }
+  // ===== Rendu d'UNE portée (une voix) sur une ligne (système) =====
+  // Adapté fidèlement du moteur de rendu par ligne de SaisieABC.
+  function MEP_drawVoiceLine(lineData, staffTop, isFirstDocLine, refScale, __isTopVoice, layout){
+    let svg='';
+    const single=!!layout;
+    const isActiveVoice=false;            // pas de repères d'édition ($, ⏎) à l'impression
+    const hlM=-1, hlS=-1;                 // aucune note surlignée
+    const ink=MEP.ink, sel=MEP.ink, dim=MEP.dim;
+    const SCORE_W=MEP._SCORE_W;
+    const usableLineW=MEP._usableLineW;
+    const pageStart=0;
+    const nVerses=MEP.showLyrics?Math.max(1,countVersesTrack(state.measures)):1;
+    const lyricOff=MEP.lyricOffset||0;
+    const LYRIC_ROW=10;
+    const lsm=lineData.mIdxs[0];
+      // 5 lignes de portee
+      for(let i=0;i<5;i++){
+        const y=staffTop+i*LINE_GAP;
+        svg+='<line x1="'+(LEFT_PAD-25)+'" y1="'+y+'" x2="'+(MEP._staffRight!==undefined?MEP._staffRight:(SCORE_W-RIGHT_PAD))+'" y2="'+y+'" stroke="'+ink+'" stroke-width="0.55" opacity="0.55"/>';
+      }
+      const hC=clefAt(lsm),hK=keyAt(lsm),hM=meterAt(lsm);
+      // Cle
+      if(hC==='bass'){
+        svg+='<text x="'+(LEFT_PAD-32)+'" y="'+(staffTop+2.6*LINE_GAP+5)+'" font-size="22" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle">𝄢</text>';
+      } else if(hC==='alto'||hC==='tenor'){
+        const cy=staffTop+(hC==='alto'?2:1)*LINE_GAP;
+        svg+='<text x="'+(LEFT_PAD-32)+'" y="'+cy+'" font-size="21" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle" dominant-baseline="central">𝄡</text>';
+      } else {
+        svg+='<text x="'+(LEFT_PAD-32)+'" y="'+(staffTop+2.4*LINE_GAP+5)+'" font-size="26" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle">𝄞</text>';
+        if(hC==='treble8'){
+          svg+='<text x="'+(LEFT_PAD-32)+'" y="'+(staffTop+4.6*LINE_GAP+5)+'" font-size="7" fill="'+ink+'" opacity="0.85" text-anchor="middle">8</text>';
+        }
+      }
+      // Armure (un peu d'air après la clé)
+      let kx=LEFT_PAD-20;
+      // bécarres d'annulation si la tonalité change exactement en début de ligne
+      if(lsm>0){
+        const prevK=keyAt(lsm-1);
+        if(prevK!==hK){
+          const oldAccs=keySigAccidentals(prevK,hC);
+          const newSteps=new Set(keySigAccidentals(hK,hC).map(a=>a.step));
+          const sameSign=(prevK>0)===(hK>0);
+          oldAccs.forEach(a=>{
+            if(!newSteps.has(a.step)||!sameSign){
+              const ny=noteY(staffTop,a.step,hC)+4;
+              svg+='<text x="'+kx+'" y="'+ny+'" font-size="12" font-family="serif" fill="'+ink+'">♮</text>';
+              kx+=6;
+            }
+          });
+        }
+      }
+      keySigAccidentals(hK,hC).forEach(a=>{
+        const ky=noteY(staffTop,a.step,hC)+4;
+        svg+='<text x="'+kx+'" y="'+ky+'" font-size="12" font-family="serif" fill="'+ink+'">'+a.sym+'</text>';
+        kx+=6;
+      });
+      // Metrique (uniquement sur la premiere ligne du document), écartée de l'armure
+      if(isFirstDocLine){
+        const{num,den}=parseMeter(hM);
+        const mx=Math.max(kx+9,LEFT_PAD-8);
+        svg+='<text x="'+mx+'" y="'+(staffTop+1.7*LINE_GAP+1)+'" font-size="12" font-family="serif" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+num+'</text>';
+        svg+='<text x="'+mx+'" y="'+(staffTop+3.6*LINE_GAP+1)+'" font-size="12" font-family="serif" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+den+'</text>';
+      }
+      // Positions cumulatives de chaque mesure (xL,xR)
+      const measureBounds=[];
+      if(single){
+        let curX=layout.firstX;
+        for(let i=0;i<lineData.mIdxs.length;i++){
+          const mi=lineData.mIdxs[i];
+          const w=layout.widthUnits[mi];
+          measureBounds.push({xL:curX,xR:curX+w,measureW:w});
+          curX+=w;
+        }
+      } else {
+      const measureCosts=lineData.mIdxs.map(mi=>measureCost(mi));
+      const headerC=lineHeaderCost(lsm,isFirstDocLine);
+      const availableForMeasures=usableLineW-headerC+20; // recuperer la marge fixe deja comptee dans header
+      const sumCosts=measureCosts.reduce((a,b)=>a+b,0)||1;
+      // On n'etire jamais au-dela de la densite des lignes pleines : la derniere ligne incomplete
+      // garde la meme echelle et reste alignee a gauche au lieu de s'etaler sur toute la largeur.
+      const lineScale=Math.min(availableForMeasures/sumCosts, refScale);
+      let curX=LEFT_PAD+headerC-20; // commence apres l'header (le 20 etait deja dans le cost de base)
+      for(let i=0;i<lineData.mIdxs.length;i++){
+        const w=measureCosts[i]*lineScale;
+        measureBounds.push({xL:curX,xR:curX+w,measureW:w});
+        curX+=w;
+      }
+      }
+      // Dessiner les barres de mesure
+      for(let i=0;i<=lineData.mIdxs.length;i++){
+        const x=(i===0)?measureBounds[0].xL:measureBounds[i-1].xR;
+        svg+='<line x1="'+x+'" y1="'+staffTop+'" x2="'+x+'" y2="'+(staffTop+4*LINE_GAP)+'" stroke="'+ink+'" stroke-width="'+(i===0?1.1:0.7)+'" opacity="0.7"/>';
+      }
+      // Repères de mise en page (fin de ligne / fin de page) — affichés sur la voix active seulement.
+      if(isActiveVoice&&state.breaks){
+        for(let i=0;i<lineData.mIdxs.length;i++){
+          const mIdx=lineData.mIdxs[i];const br=state.breaks[mIdx];if(!br)continue;
+          const xR=measureBounds[i].xR;const yTop=staffTop-2;
+          if(br.page){
+            // double chevron vers le bas = fin de page
+            svg+='<text x="'+(xR-3)+'" y="'+(yTop-3)+'" font-size="11" fill="#185fa5" text-anchor="end">⤓</text>';
+          } else if(br.line){
+            svg+='<text x="'+(xR-3)+'" y="'+(yTop-3)+'" font-size="11" fill="#185fa5" text-anchor="end">⏎</text>';
+          }
+        }
+      }
+      // Etat partage pour les liaisons traversant les mesures de la ligne
+      let pS=null;
+      const tP=[];
+      const sP=[];           // arcs de slur (phrasé), un par chaîne continue
+      const pendP=[];        // liaisons « en attente » (linkToNext sans note suivante) → arc pointillé
+      let slurStart=null;    // {cx,y} de la première note de la chaîne de slur en cours
+      let slurLast=null;     // {cx,y} de la dernière note vue dans la chaîne
+      let pendingIncomingTie=false;
+      // Gère la chaîne de slur : appelée pour chaque note avec sa position.
+      // prevHadSlur = la note précédente avait slurToNext (donc lien actif vers celle-ci).
+      function handleSlur(prevHadSlur,cx,y,thisHasSlur,su){
+        if(prevHadSlur){ if(!slurStart)slurStart=slurLast||{cx,y,su}; slurLast={cx,y,su}; }
+        else { // pas de lien entrant : fermer la chaîne précédente s'il y en a une
+          if(slurStart&&slurLast){sP.push({fromCx:slurStart.cx,fromY:slurStart.y,toCx:slurLast.cx,toY:slurLast.y,stemUp:slurStart.su})}
+          slurStart=null;slurLast={cx,y,su};
+        }
+        if(thisHasSlur&&!slurStart)slurStart={cx,y,su}; // cette note ouvre une chaîne
+      }
+      if(lsm>0){
+        const prevM=state.measures[lsm-1];
+        if(prevM){
+          for(let k=prevM.length-1;k>=0;k--){
+            const s=prevM[k];
+            if(s.type==='note'){if(s.tieToNext)pendingIncomingTie=true;break}
+          }
+        }
+      }
+      for(let i=0;i<lineData.mIdxs.length;i++){
+        const mIdx=lineData.mIdxs[i];
+        if(state.measures[mIdx]===undefined)continue;
+        const xL=measureBounds[i].xL;
+        const xR=measureBounds[i].xR;
+        const measureW=measureBounds[i].measureW;
+        // Reprises et voltas
+        const r=state.repeats[mIdx];
+        if(r){
+          if(r.start){
+            svg+='<line x1="'+(xL+2)+'" y1="'+staffTop+'" x2="'+(xL+2)+'" y2="'+(staffTop+4*LINE_GAP)+'" stroke="'+ink+'" stroke-width="2"/>';
+            svg+='<circle cx="'+(xL+6)+'" cy="'+(staffTop+1.5*LINE_GAP)+'" r="1.1" fill="'+ink+'"/>';
+            svg+='<circle cx="'+(xL+6)+'" cy="'+(staffTop+2.5*LINE_GAP)+'" r="1.1" fill="'+ink+'"/>';
+          }
+          if(r.end){
+            svg+='<circle cx="'+(xR-6)+'" cy="'+(staffTop+1.5*LINE_GAP)+'" r="1.1" fill="'+ink+'"/>';
+            svg+='<circle cx="'+(xR-6)+'" cy="'+(staffTop+2.5*LINE_GAP)+'" r="1.1" fill="'+ink+'"/>';
+            svg+='<line x1="'+(xR-2)+'" y1="'+staffTop+'" x2="'+(xR-2)+'" y2="'+(staffTop+4*LINE_GAP)+'" stroke="'+ink+'" stroke-width="2"/>';
+          }
+          if(r.volta){
+            const yV=staffTop-11;
+            svg+='<line x1="'+(xL+2)+'" y1="'+yV+'" x2="'+(xR-2)+'" y2="'+yV+'" stroke="'+ink+'" stroke-width="0.8"/>';
+            svg+='<line x1="'+(xL+2)+'" y1="'+yV+'" x2="'+(xL+2)+'" y2="'+(yV+4)+'" stroke="'+ink+'" stroke-width="0.8"/>';
+            svg+='<text x="'+(xL+5)+'" y="'+(yV+6)+'" font-size="8" fill="'+ink+'" font-weight="bold">'+r.volta+'.</text>';
+          }
+        }
+        const m=state.measures[mIdx];
+        const lC=clefAt(mIdx),lM=meterAt(mIdx);
+        let changeOffset=0;
+        let rightInset=0;
+        // Reprise gauche : prendre en compte la place des points/barre epaisse
+        if(r&&r.start)changeOffset=Math.max(changeOffset,6);
+        // Reprise droite : reduire l'espace utile a droite
+        if(r&&r.end)rightInset=8;
+        if(i>0){
+          const prevClef=clefAt(mIdx-1);
+          const prevKey=keyAt(mIdx-1);
+          const prevMeter=meterAt(mIdx-1);
+          const hasClefChange=lC!==prevClef;
+          const hasKeyChange=keyAt(mIdx)!==prevKey;
+          const hasMeterChange=lM!==prevMeter;
+          if(hasClefChange||hasKeyChange||hasMeterChange){
+            let cx=xL+3+changeOffset;
+            // Cle (en premier, juste apres la barre)
+            if(hasClefChange){
+              cx+=5;
+              if(lC==='bass'){
+                svg+='<text x="'+cx+'" y="'+(staffTop+2.6*LINE_GAP+4)+'" font-size="18" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle">𝄢</text>';
+              } else if(lC==='alto'||lC==='tenor'){
+                const cyy=staffTop+(lC==='alto'?2:1)*LINE_GAP;
+                svg+='<text x="'+cx+'" y="'+cyy+'" font-size="17" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle" dominant-baseline="central">𝄡</text>';
+              } else {
+                svg+='<text x="'+cx+'" y="'+(staffTop+2.4*LINE_GAP+4)+'" font-size="21" font-family="serif" fill="'+ink+'" opacity="0.85" text-anchor="middle">𝄞</text>';
+                if(lC==='treble8')svg+='<text x="'+(cx+3)+'" y="'+(staffTop+4.6*LINE_GAP+4)+'" font-size="6" fill="'+ink+'" opacity="0.85" text-anchor="middle">8</text>';
+              }
+              cx+=8;
+            }
+            // Armure
+            if(hasKeyChange){
+              if(hasClefChange)cx+=2;
+              const newSig=keyAt(mIdx);
+              // Bécarres d'annulation : altérations présentes dans l'ANCIENNE armure et absentes
+              // de la nouvelle (notamment quand on revient à une armure vide). Affichés AVANT.
+              const oldAccs=keySigAccidentals(prevKey,lC);
+              const newAccs=keySigAccidentals(newSig,lC);
+              const newSteps=new Set(newAccs.map(a=>a.step));
+              const sameSign=(prevKey>0)===(newSig>0);
+              oldAccs.forEach(a=>{
+                // si la note n'est plus altérée dans la nouvelle armure (ou changement de sens ♯↔♭), bécarre
+                if(!newSteps.has(a.step)||!sameSign){
+                  const ny=noteY(staffTop,a.step,lC)+3;
+                  svg+='<text x="'+cx+'" y="'+ny+'" font-size="11" font-family="serif" fill="'+ink+'">♮</text>';
+                  cx+=6;
+                }
+              });
+              // Puis les altérations de la nouvelle armure
+              newAccs.forEach(a=>{
+                const ky=noteY(staffTop,a.step,lC)+4;
+                svg+='<text x="'+cx+'" y="'+ky+'" font-size="11" font-family="serif" fill="'+ink+'">'+a.sym+'</text>';
+                cx+=6;
+              });
+              cx+=3;
+            }
+            // Rythme
+            if(hasMeterChange){
+              if(hasClefChange||hasKeyChange)cx+=2;
+              const{num,den}=parseMeter(lM);
+              cx+=4;
+              svg+='<text x="'+cx+'" y="'+(staffTop+1.8*LINE_GAP+1)+'" font-size="10" font-family="serif" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+num+'</text>';
+              svg+='<text x="'+cx+'" y="'+(staffTop+3.6*LINE_GAP+1)+'" font-size="10" font-family="serif" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+den+'</text>';
+              cx+=7;
+            }
+            // Marge supplementaire avant la premiere note
+            cx+=4;
+            // Espace consomme depuis xL
+            changeOffset=cx-xL;
+          }
+        }
+        const x0=xL+6+changeOffset;
+        const usableW=measureW-10-changeOffset-rightInset;
+        // Largeur ideale par slot : 10 unites pour une note normale, 14 unites si elle a une alteration
+        const slotWidth=m.map((slot,si)=>{
+          if(slot.type!=='note')return 10;
+          const accD=accToDrawFor(m,si,keyAt(mIdx));
+          return accD?14:10;
+        });
+        const sumW=slotWidth.reduce((a,b)=>a+b,0)||1;
+        // Mise a l'echelle : compresse ou dilate pour remplir exactement usableW
+        const scale=usableW/sumW;
+        // Position cumulative : centre de chaque slot au milieu de sa largeur (apres scale)
+        const cxBySlot=new Array(m.length);
+        const wBySlot=new Array(m.length);
+        let cum=0;
+        for(let si=0;si<m.length;si++){
+          const w=slotWidth[si]*scale;
+          cxBySlot[si]=x0+cum+w/2;
+          wBySlot[si]=w;
+          cum+=w;
+        }
+        // sW de reference (utilise pour les boites de selection)
+        const sW=usableW/Math.max(m.length,1);
+        const bg=computeBeamGroups(m,lM);
+        const sTG={};
+        bg.forEach((g,gi)=>{g.forEach(si=>sTG[si]={gIdx:gi,group:g})});
+        const mS=clefRefStep(lC)+4;
+        const gSD=bg.map(g=>{
+          let s=0;
+          for(const idx of g){const t=m[idx];s+=stepIndex(t.note,t.octave)}
+          return(s/g.length)<mS?'up':'down';
+        });
+        const gBD=bg.map((g,gi)=>{
+          const su=gSD[gi]==='up';
+          let eY=su?Infinity:-Infinity;
+          const sX=[];
+          g.forEach(si=>{
+            const t=m[si];
+            const cx=cxBySlot[si];
+            const sx=su?cx+3.3:cx-3.3;
+            const hY=noteY(staffTop,stepIndex(t.note,t.octave),lC);
+            const nT=su?hY-19:hY+19;
+            if(su)eY=Math.min(eY,nT);else eY=Math.max(eY,nT);
+            sX.push({slotIdx:si,sx,headY:hY});
+          });
+          return{stemUp:su,beamY:eY,stems:sX};
+        });
+        m.forEach((t,si)=>{
+          const cx=cxBySlot[si];
+          // Rectangle cliquable invisible sur toute la zone du slot (selection par clic)
+          const iS=(mIdx===hlM&&si===hlS);
+          const cl=iS?sel:ink;
+          if(t.chord&&state.viewFlags.chords)svg+='<text x="'+cx+'" y="'+(staffTop-3)+'" font-size="9" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+escXml(t.chord)+'</text>';
+          if(t.text&&state.viewFlags.text)svg+='<text x="'+cx+'" y="'+(staffTop-(t.chord&&state.viewFlags.chords?13:3))+'" font-size="6" font-style="italic" fill="'+ink+'" text-anchor="middle">'+escXml(t.text)+'</text>';
+          if(t.orn&&t.orn.length){
+            const ot=t.orn.filter(o=>o!=='.').map(o=>{if(o==='~')return'tr';if(o==='T')return'tr';if(o==='M')return'∼';if(o==='P')return'∿';if(o==='H')return'𝄐';if(o==='L')return'>';if(o==='u')return'⋁';if(o==='v')return'⊓';if(o==='O')return'⊕';return o}).join(' ');
+            if(ot)svg+='<text x="'+cx+'" y="'+(staffTop-12)+'" font-size="8" font-style="italic" fill="'+ink+'" text-anchor="middle">'+ot+'</text>';
+          }
+          if(t.type==='note'){
+            const gp=sTG[si];
+            if(gp){
+              const gi=gp.gIdx;
+              const su=gSD[gi]==='up';
+              const bY=gBD[gi].beamY;
+              const dr=drawNoteHead(t,cx,cl,lC,false,su,staffTop,accToDrawFor(m,si,keyAt(mIdx)));
+              const sx=dr.stemX,hY=dr.headY;
+              svg+=dr.svg;
+              svg+=staccatoDot(t,cx,dr.headY,su,cl);
+              svg+='<line x1="'+sx+'" y1="'+hY+'" x2="'+sx+'" y2="'+bY+'" stroke="'+cl+'" stroke-width="0.8"/>';
+              if(iS&&!(state._chordEditMode&&state._chordAddPending))svg+='<circle cx="'+cx+'" cy="'+dr.headY+'" r="8" fill="none" stroke="'+sel+'" stroke-width="0.7" opacity="0.4"/>';
+              if(iS&&state._chordEditMode&&!state._chordAddPending){const ac=activeChordNote(t);if(ac){const ay=noteY(staffTop,stepIndex(ac.note,ac.octave),lC);svg+='<circle cx="'+cx+'" cy="'+ay+'" r="5" fill="none" stroke="#d11" stroke-width="1.4"/>';}}
+              if(pS&&pS.t.tieToNext){const _su=(pS.su!==undefined?pS.su:su);const _ys=sharedTieYs(pS.t,t,staffTop,lC);if(_ys.length){_ys.forEach(_y=>tP.push({fromCx:pS.cx,fromY:_y,toCx:cx,toY:_y,stemUp:_su}));}else{tP.push({fromCx:pS.cx,fromY:pS.y,toCx:cx,toY:dr.headY,stemUp:_su});}}
+              if(pendingIncomingTie){tP.push({fromCx:LEFT_PAD-6,fromY:dr.headY,toCx:cx,toY:dr.headY,partial:'in',stemUp:su});pendingIncomingTie=false}
+              handleSlur(!!(pS&&pS.t.slurToNext),cx,dr.headY,!!t.slurToNext,su);
+              pS={t,cx,y:dr.headY,su};
+            } else {
+              const st=stepIndex(t.note,t.octave);
+              const su=st<mS;
+              const dr=drawNoteHead(t,cx,cl,lC,true,su,staffTop,accToDrawFor(m,si,keyAt(mIdx)));
+              svg+=dr.svg;
+              svg+=staccatoDot(t,cx,dr.headY,su,cl);
+              if(iS&&!(state._chordEditMode&&state._chordAddPending))svg+='<circle cx="'+cx+'" cy="'+dr.headY+'" r="8" fill="none" stroke="'+sel+'" stroke-width="0.7" opacity="0.4"/>';
+              if(iS&&state._chordEditMode&&!state._chordAddPending){const ac=activeChordNote(t);if(ac){const ay=noteY(staffTop,stepIndex(ac.note,ac.octave),lC);svg+='<circle cx="'+cx+'" cy="'+ay+'" r="5" fill="none" stroke="#d11" stroke-width="1.4"/>';}}
+              if(pS&&pS.t.tieToNext){const _su=(pS.su!==undefined?pS.su:su);const _ys=sharedTieYs(pS.t,t,staffTop,lC);if(_ys.length){_ys.forEach(_y=>tP.push({fromCx:pS.cx,fromY:_y,toCx:cx,toY:_y,stemUp:_su}));}else{tP.push({fromCx:pS.cx,fromY:pS.y,toCx:cx,toY:dr.headY,stemUp:_su});}}
+              if(pendingIncomingTie){tP.push({fromCx:LEFT_PAD-6,fromY:dr.headY,toCx:cx,toY:dr.headY,partial:'in',stemUp:su});pendingIncomingTie=false}
+              handleSlur(!!(pS&&pS.t.slurToNext),cx,dr.headY,!!t.slurToNext,su);
+              pS={t,cx,y:dr.headY,su};
+            }
+            // Liaison « en attente » : intention posée mais ni tie ni slur résolu (pas de note à droite)
+            if(t.linkToNext&&!t.tieToNext&&!t.slurToNext&&pS){pendP.push({cx:pS.cx,y:pS.y});}
+          } else {
+            const dr=drawRest(t,cx,cl,staffTop);
+            svg+=dr.svg;
+            if(iS&&!(state._chordEditMode&&state._chordAddPending))svg+='<circle cx="'+cx+'" cy="'+dr.headY+'" r="8" fill="none" stroke="'+sel+'" stroke-width="0.7" opacity="0.4"/>';
+            // Silences cassent les liaisons
+            if(slurStart&&slurLast){sP.push({fromCx:slurStart.cx,fromY:slurStart.y,toCx:slurLast.cx,toY:slurLast.y,stemUp:slurStart.su})}
+            slurStart=null;slurLast=null;
+            pS=null;
+          }
+          if(t.tuplet&&(si===0||!m[si-1]||!m[si-1].tuplet||m[si-1].tupletId!==t.tupletId)){
+            const gs=[];
+            for(let j=si;j<m.length&&m[j].tupletId===t.tupletId&&gs.length<t.tuplet;j++)gs.push(j);
+            if(gs.length>0){
+              const cF=x0+gs[0]*sW+sW/2;
+              const cL=x0+gs[gs.length-1]*sW+sW/2;
+              const cM=(cF+cL)/2;
+              // Crochet du n-uplet (au-dessus de la portee)
+              const yT=staffTop-6;
+              svg+='<line x1="'+cF+'" y1="'+yT+'" x2="'+cL+'" y2="'+yT+'" stroke="'+ink+'" stroke-width="0.7"/>';
+              svg+='<line x1="'+cF+'" y1="'+yT+'" x2="'+cF+'" y2="'+(yT+3)+'" stroke="'+ink+'" stroke-width="0.7"/>';
+              svg+='<line x1="'+cL+'" y1="'+yT+'" x2="'+cL+'" y2="'+(yT+3)+'" stroke="'+ink+'" stroke-width="0.7"/>';
+              svg+='<text x="'+cM+'" y="'+(yT-1)+'" font-size="8" font-style="italic" fill="'+ink+'" text-anchor="middle" font-weight="bold">'+t.tuplet+'</text>';
+            }
+          }
+          if(si===0){
+            if(state.viewFlags.measureNums)svg+='<text x="'+(xL+2)+'" y="'+(staffTop-3)+'" font-size="8" fill="'+dim+'">'+String(mIdx+1)+'</text>';
+            if(state.viewFlags.parts&&state.parts&&state.parts[mIdx])svg+='<text x="'+(xL+2)+'" y="'+(staffTop-14)+'" font-size="11" font-weight="bold" fill="'+ink+'">'+escXml(state.parts[mIdx])+'</text>';
+            // Indication de tempo : mesure 0 (tempo initial) ou toute mesure avec changement.
+            // Affichée sur la voix VISIBLE LA PLUS HAUTE (pas forcément la voix active).
+            const tc=state.tempoChanges||{};
+            const isTopVoice=__isTopVoice;
+            if((mIdx===0||tc[mIdx]!==undefined)&&isTopVoice){
+              const bpm=Math.round(tempoAt(mIdx)/beatQuarters());
+              // y normalement au-dessus de la portée ; sur la 1re ligne l'espace est réduit (viewBox
+              // commence à 0), donc on borne à une valeur VISIBLE. On décale aussi en x pour ne pas
+              // chevaucher le numéro de mesure / la lettre de partie.
+              const tyTempo=Math.max(8,staffTop-23);
+              const hasPart=!!(state.viewFlags.parts&&state.parts&&state.parts[mIdx]);
+              // si l'espace au-dessus est resserré (1re ligne) OU si une lettre de partie occupe déjà
+              // la zone, on décale le tempo à droite pour éviter tout chevauchement.
+              const cramped=(tyTempo>=staffTop-14);
+              let txTempo=xL+2;
+              if(cramped||hasPart)txTempo=xL+(hasPart?28:16);
+              svg+='<text x="'+txTempo+'" y="'+tyTempo+'" font-size="10" font-weight="bold" font-family="serif" fill="'+ink+'">'+beatGlyph()+'='+bpm+'</text>';
+            }
+          }
+          if(t.type==='note'&&state.viewFlags.lyrics){
+            for(let v=1;v<=nVerses;v++){
+              const raw=verseSyl(t,v);
+              if(!raw)continue;
+              const showDash=/-+$/.test(raw);
+              // Le tiret FINAL de continuation est dessiné séparément à droite : on retire TOUS les
+              // tirets finaux du texte (données héritées pouvant en contenir plusieurs → « li-- »).
+              // Les tirets internes (bon-jour) restent.
+              const core=raw.replace(/-+$/,'');
+              const lyricDisplay=core.replace(/_/g,'').replace(/~/g,' ');
+              const ly=staffTop+4*LINE_GAP+13+lyricOff+(v-1)*LYRIC_ROW;
+              svg+='<text x="'+cx+'" y="'+ly+'" font-size="9" fill="'+ink+'" text-anchor="middle" font-family="sans-serif">'+escXml(lyricDisplay)+'</text>';
+              if(showDash)svg+='<text x="'+(cx+5)+'" y="'+ly+'" font-size="9" fill="'+dim+'" text-anchor="start" font-family="sans-serif">-</text>';
+            }
+          }
+          // Zone cliquable invisible pour selectionner ce slot
+        });
+        // Beams pour cette mesure : niveau 1 complet, niveaux 2/3 partiels selon notes
+        bg.forEach((g,gi)=>{
+          const d=gBD[gi];const su=d.stemUp;const bY=d.beamY;const sts=d.stems;
+          const bT=2.5;
+          const dyO=su?bT+0.8:-(bT+0.8);
+          // Niveau de chaque note du groupe (1=croche, 2=double, 3=triple)
+          // On utilise la duree de base (sans point ni n-uplet) pour decider le nombre de barres
+          const lvls=g.map(idx=>{
+            const bD=m[idx].dur;
+            if(bD<=0.0625+1e-6)return 4;
+            if(bD<=0.125+1e-6)return 3;
+            if(bD<=0.25+1e-6)return 2;
+            return 1;
+          });
+          // sX = position x de chaque hampe (ordre = ordre du groupe)
+          const xPos=sts.map(s=>s.sx);
+          const xS=xPos[0],xE=xPos[xPos.length-1];
+          // Barre principale (niveau 1) : toute la largeur du groupe
+          {
+            const yy=bY;
+            svg+='<rect x="'+xS+'" y="'+(yy-bT/2)+'" width="'+(xE-xS)+'" height="'+bT+'" fill="'+ink+'"/>';
+          }
+          // Niveaux 2, 3 et 4 : segments entre notes consecutives de meme niveau, demi-barres pour les isolees
+          for(let lvl=2;lvl<=4;lvl++){
+            const yy=bY+(lvl-1)*dyO;
+            // 1) Segments connectes : entre i et i+1 si les deux ont niveau >= lvl
+            const connected=new Array(xPos.length).fill(false);
+            for(let i=0;i<xPos.length-1;i++){
+              if(lvls[i]>=lvl&&lvls[i+1]>=lvl){
+                svg+='<rect x="'+xPos[i]+'" y="'+(yy-bT/2)+'" width="'+(xPos[i+1]-xPos[i])+'" height="'+bT+'" fill="'+ink+'"/>';
+                connected[i]=true;connected[i+1]=true;
+              }
+            }
+            // 2) Demi-barres pour les notes de niveau >= lvl qui ne sont pas connectees
+            for(let i=0;i<xPos.length;i++){
+              if(lvls[i]>=lvl&&!connected[i]){
+                // Longueur de demi-barre : ~40% de la distance au voisin du meme groupe
+                let halfLen;
+                if(i===0){
+                  // Demi-barre vers la droite
+                  halfLen=Math.max(3,(xPos[1]-xPos[0])*0.4);
+                  svg+='<rect x="'+xPos[i]+'" y="'+(yy-bT/2)+'" width="'+halfLen+'" height="'+bT+'" fill="'+ink+'"/>';
+                } else {
+                  // Demi-barre vers la gauche
+                  halfLen=Math.max(3,(xPos[i]-xPos[i-1])*0.4);
+                  svg+='<rect x="'+(xPos[i]-halfLen)+'" y="'+(yy-bT/2)+'" width="'+halfLen+'" height="'+bT+'" fill="'+ink+'"/>';
+                }
+              }
+            }
+          }
+        });
+      }
+      // Liaison sortante : si la derniere note de la ligne a tieToNext
+      if(pS&&pS.t.tieToNext){
+        tP.push({fromCx:pS.cx,fromY:pS.y,toCx:SCORE_W-RIGHT_PAD+4,toY:pS.y,partial:'out'});
+      }
+      // Fermer la chaîne de slur en cours en fin de ligne
+      if(slurStart&&slurLast&&slurStart.cx!==slurLast.cx){sP.push({fromCx:slurStart.cx,fromY:slurStart.y,toCx:slurLast.cx,toY:slurLast.y,stemUp:slurStart.su})}
+      slurStart=null;slurLast=null;
+      // Dessiner toutes les liaisons de durée (tie) de la ligne.
+      // Règle : la liaison s'incurve à l'OPPOSÉ des tiges (tiges en haut → liaison en dessous, ouvrant
+      // vers le haut ; tiges en bas → liaison au-dessus). Écart suffisant des têtes pour ne pas coller.
+      tP.forEach(tp=>{
+        const cx=(tp.fromCx+tp.toCx)/2;
+        const below=(tp.stemUp!==false); // par défaut tiges en haut → liaison en dessous
+        const gap=5;          // écart vertical départ/arrivée par rapport à la tête
+        const bow=7;          // hauteur de la courbure
+        const y1=tp.fromY+(below?gap:-gap);
+        const y2=tp.toY+(below?gap:-gap);
+        // sommet de l'arc du bon côté ; sur grand écart de hauteur on suit la pente entre les deux têtes
+        const cy=((y1+y2)/2)+(below?bow:-bow);
+        const x1=tp.fromCx+3, x2=tp.toCx-3;
+        svg+='<path d="M '+x1+' '+y1+' Q '+cx+' '+cy+' '+x2+' '+y2+'" stroke="'+ink+'" stroke-width="0.9" fill="none"/>';
+      });
+      // Slurs (phrasé) : un seul arc par chaîne, du côté opposé aux tiges, en épousant le grand écart.
+      sP.forEach(sp=>{
+        const cx=(sp.fromCx+sp.toCx)/2;
+        const below=(sp.stemUp===false); // tiges en bas → slur au-dessus ; sinon au-dessus aussi par défaut
+        // Convention lisible : slur au-DESSUS par défaut (tiges en haut), en dessous si tiges en bas.
+        const above=!below;
+        const gap=5, bow=10;
+        const y1=sp.fromY+(above?-gap:gap);
+        const y2=sp.toY+(above?-gap:gap);
+        // Sur grand intervalle, le sommet se cale sur la tête la plus extrême du bon côté.
+        const extreme=above?Math.min(y1,y2):Math.max(y1,y2);
+        const cy=extreme+(above?-bow:bow);
+        svg+='<path d="M '+(sp.fromCx+1)+' '+y1+' Q '+cx+' '+cy+' '+(sp.toCx-1)+' '+y2+'" stroke="'+ink+'" stroke-width="1.1" fill="none" stroke-linecap="round"/>';
+      });
+      // Liaisons « en attente » : petit arc pointillé bleu sortant de la note (aucune note à droite encore)
+      pendP.forEach(pp=>{
+        const x2=pp.cx+12;
+        svg+='<path d="M '+(pp.cx+3)+' '+(pp.y+3)+' Q '+(pp.cx+8)+' '+(pp.y+8)+' '+x2+' '+(pp.y+3)+'" stroke="#185fa5" stroke-width="1" fill="none" stroke-dasharray="2 2" opacity="0.9"/>';
+      });
+
+    return svg;
+  }
+  // =====================================================================
+  //  MISE EN PAGE A4 — module de pagination multi-voix
+  //  Réutilise le parseur et les primitives de dessin de SaisieABC.
+  // =====================================================================
+  const A4_W_MM=210, A4_H_MM=297;
+  const MEP={
+    scale:100,            // taille des notes (%) — agit inversement sur la densité
+    measuresPerSystem:0,  // 0 = automatique (selon largeur)
+    marginMM:16,          // marges page (mm)
+    showLyrics:true,
+    showChords:true,
+    showMeasureNums:false,
+    showTempo:true,
+    justify:false,        // étirer chaque ligne sur toute la largeur (y compris la dernière)
+    ink:'#1a1a1a', dim:'#8a877e',
+    lyricOffset:0,
+    noteSpacing:0,        // densité horizontale des notes (négatif = serré, positif = aéré)
+    voiceGap:10,          // écart vertical entre voix d'un même système (réglable, peut être négatif)
+    systemGap:20,         // écart vertical entre systèmes (réglable)
+    userBreaks:{},        // sauts posés/retirés à la main : index mesure -> 'line'|'page'|'none'
+    editBreaks:false,     // mode : cliquer une mesure pour poser/enlever un saut
+    visible:[],           // index des voix affichées
+    _tunes:[], _tuneIdx:0, _words:[], // morceaux détectés + lignes W: brutes
+    _SCORE_W:760, _usableLineW:704, _staffRight:undefined, _isTopVoice:true,
+    fileName:'Partition'
+  };
+
+  // ---- géométrie verticale (unités du moteur) ----
+  const ABOVE = 26;       // place au-dessus de la portée (clé/tempo/n° mesure)
+  const STAFF = 4*LINE_GAP;
+  const SYS_GAP = 20;     // espace entre systèmes
+  const VOICE_GAP = 10;   // valeur par défaut (l'écart effectif est MEP.voiceGap)
+
+  // nombre RÉEL de couplets d'une piste : 0 si la piste n'a aucune parole
+  function trackVerses(ti){
+    const tr=state.tracks[ti]; if(!tr)return 0;
+    let any=false, extra=0;
+    (tr.measures||[]).forEach(m=>m.forEach(s=>{
+      if(s.type==='note'){
+        if(s.lyric&&String(s.lyric).trim())any=true;
+        if(s.verses&&s.verses.length){ any=true; extra=Math.max(extra,s.verses.length); }
+      }
+    }));
+    return any ? 1+extra : 0;
+  }
+  function versesOf(ti){
+    return MEP.showLyrics?trackVerses(ti):0;
+  }
+  // hauteur d'un bloc-voix (au-dessus + portée + paroles).
+  // Pas de parole sur la piste → aucun espace de parole réservé.
+  function voiceBlockH(ti){
+    const nv=versesOf(ti);
+    const below = nv>0 ? (8 + Math.max(0,MEP.lyricOffset) + nv*10) : 8;
+    return ABOVE + STAFF + below;
+  }
+  function systemH(){
+    let h=0; MEP.visible.forEach((ti,k)=>{ h+=voiceBlockH(ti); if(k<MEP.visible.length-1)h+=MEP.voiceGap; });
+    return h + MEP.systemGap;
+  }
+
+  // ---- largeurs de mesure PARTAGÉES (max sur les voix visibles) → barres alignées ----
+  function sharedWidths(){
+    const saved=state.activeTrack;
+    let N=0; MEP.visible.forEach(i=>{N=Math.max(N,(state.tracks[i].measures||[]).length)});
+    if(N===0)N=1;
+    const w=new Array(N).fill(0);
+    MEP.visible.forEach(i=>{ state.activeTrack=i; const len=(state.measures||[]).length;
+      for(let mi=0;mi<N&&mi<len;mi++){ const c=measureCost(mi); if(c>w[mi])w[mi]=c; } });
+    state.activeTrack=saved;
+    // facteur d'espacement horizontal : <1 = notes serrées (plus de mesures/ligne), >1 = aérées
+    const f=Math.max(0.35, Math.min(2.5, 1+MEP.noteSpacing/15));
+    for(let mi=0;mi<N;mi++)w[mi]=Math.max(10, w[mi]*f);
+    return w;
+  }
+  function maxHeader(firstMi,isFirstDoc){
+    const saved=state.activeTrack; let h=20;
+    MEP.visible.forEach(i=>{ state.activeTrack=i; h=Math.max(h,lineHeaderCost(firstMi,isFirstDoc)); });
+    state.activeTrack=saved; return h;
+  }
+  // union des sauts de ligne explicites ($) de toutes les voix
+  function lineBreaksUnion(){
+    const set={};
+    const collect=(brk)=>{ if(!brk)return; Object.keys(brk).forEach(k=>{ if(brk[k]&&(brk[k].line||brk[k].page))set[k]=brk[k]; }); };
+    collect(state.breaks);
+    state.tracks.forEach(t=>collect(t.breaks));
+    return set;
+  }
+  // sauts effectifs = sauts du fichier ($) PUIS surcharge par les sauts posés/retirés à la main
+  function effectiveBreaks(){
+    const set=lineBreaksUnion();
+    const ub=MEP.userBreaks||{};
+    Object.keys(ub).forEach(k=>{
+      const v=ub[k];
+      if(v==='none')delete set[k];
+      else if(v==='line')set[k]={line:true};
+      else if(v==='page')set[k]={page:true};
+    });
+    return set;
+  }
+  // bornes horizontales de chaque mesure d'un système (pour les zones cliquables / repères)
+  function measureXRanges(sys){
+    const r={}; let x=sys.layout.firstX;
+    sys.mIdxs.forEach(mi=>{ const w=sys.layout.widthUnits[mi]; r[mi]={x0:x, x1:x+w}; x+=w; });
+    return r;
+  }
+
+  // ---- découpage en systèmes (mesures par ligne) ----
+  function buildSystems(){
+    const widths=sharedWidths();
+    const N=widths.length;
+    MEP._N=N;
+    const usable=MEP._usableLineW;
+    const brk=effectiveBreaks();
+    const cap=MEP.measuresPerSystem>0?MEP.measuresPerSystem:Infinity;
+    const systems=[];
+    let cur=[], firstDoc=true, accW=0, headW=maxHeader(0,true);
+    for(let mi=0;mi<N;mi++){
+      const c=widths[mi];
+      const fits = cur.length===0 ? true : (accW + c + (headW-20) <= usable);
+      const underCap = cur.length < cap;
+      if(cur.length>0 && (!fits || !underCap)){
+        systems.push({mIdxs:cur, firstDoc}); firstDoc=false;
+        cur=[]; accW=0; headW=maxHeader(mi,false);
+      }
+      cur.push(mi); accW+=c;
+      // saut explicite après cette mesure
+      const b=brk[mi];
+      if(b && (b.line||b.page) && mi<N-1){
+        systems.push({mIdxs:cur, firstDoc, hardPage:!!b.page}); firstDoc=false;
+        cur=[]; accW=0; headW=maxHeader(mi+1,false);
+      }
+    }
+    if(cur.length>0)systems.push({mIdxs:cur, firstDoc});
+    if(systems.length===0)systems.push({mIdxs:[0], firstDoc:true});
+
+    // densité de référence : on prend l'échelle des systèmes "pleins" (la plus petite)
+    // pour ne pas étirer le dernier système incomplet sur toute la largeur.
+    let refDensity=Infinity;
+    systems.forEach(sys=>{
+      const headU=maxHeader(sys.mIdxs[0],sys.firstDoc);
+      const avail=usable-(headU-20);
+      const sum=sys.mIdxs.reduce((a,mi)=>a+widths[mi],0)||1;
+      const sc=avail/sum; if(sc<refDensity)refDensity=sc;
+      sys._headU=headU; sys._sum=sum;
+    });
+    if(!isFinite(refDensity)||refDensity<=0)refDensity=1;
+
+    systems.forEach(sys=>{
+      const avail=usable-(sys._headU-20);
+      // justify ON : chaque ligne remplit la largeur ; sinon, on plafonne à la densité
+      // des systèmes pleins pour ne pas étirer une dernière ligne incomplète.
+      const sc=MEP.justify ? (avail/sys._sum) : Math.min(avail/sys._sum, refDensity);
+      const firstX=LEFT_PAD+(sys._headU-20);
+      const widthUnits=new Array(N).fill(0);
+      let right=firstX;
+      sys.mIdxs.forEach(mi=>{ const w=widths[mi]*sc; widthUnits[mi]=w; right+=w; });
+      sys.layout={firstX, widthUnits};
+      sys.rightEdge=right;     // bord droit réel (dernière barre)
+      sys.height=systemH();
+    });
+    return systems;
+  }
+
+  // ---- assemblage d'un système (toutes les voix empilées) en SVG, hauteur = systemH() ----
+  function renderSystem(sys){
+    let svg='';
+    let y=ABOVE;                       // sommet de la 1re portée
+    const topVi=MEP.visible.length?MEP.visible[0]:0;
+    MEP.visible.forEach((ti,k)=>{
+      const staffTop=y;
+      state.activeTrack=ti;
+      MEP._staffRight=sys.rightEdge;
+      MEP._isTopVoice=(ti===topVi);
+      const ld={mIdxs:sys.mIdxs, _bounds:null};
+      // single=true dans le corps → utilise sys.layout (largeurs partagées) → barres alignées
+      svg+=MEP_drawVoiceLineSingle(ld, staffTop, sys.firstDoc, sys.layout);
+      // étiquette de voix : nom complet au 1er système, nom court aux suivants
+      if(MEP._labelZone>0){
+        const tr=state.tracks[ti];
+        const full=(tr.name||('V'+(ti+1)));
+        const short=(tr.sname||'').trim() || (full?full.trim().charAt(0):'');
+        const nm=sys.firstDoc?full:short;
+        if(nm)svg+='<text x="'+(LEFT_PAD-46)+'" y="'+(staffTop+2*LINE_GAP+4)+'" font-size="9" font-family="serif" fill="'+MEP.ink+'" text-anchor="end">'+escXml(nm)+'</text>';
+      }
+      y += voiceBlockH(ti) + MEP.voiceGap;
+    });
+    // accolade reliant les voix d'un système (SATB), à gauche des clés
+    if(MEP.visible.length>1){
+      const x=LEFT_PAD-42;
+      const yTop=ABOVE, yBot=y-MEP.voiceGap-voiceBlockHBottom();
+      svg='<line x1="'+x+'" y1="'+yTop+'" x2="'+x+'" y2="'+yBot+'" stroke="'+MEP.ink+'" stroke-width="1.2"/>'
+        +'<line x1="'+x+'" y1="'+yTop+'" x2="'+(x+4)+'" y2="'+yTop+'" stroke="'+MEP.ink+'" stroke-width="1.2"/>'
+        +'<line x1="'+x+'" y1="'+yBot+'" x2="'+(x+4)+'" y2="'+yBot+'" stroke="'+MEP.ink+'" stroke-width="1.2"/>'
+        + svg;
+    }
+    // ---- repères de saut + zones cliquables (poser/enlever ⏎ / ⤓) ----
+    const eb=effectiveBreaks();
+    const ranges=measureXRanges(sys);
+    const contentH=Math.max(STAFF, sys.height-MEP.systemGap);
+    sys.mIdxs.forEach(mi=>{
+      const r=ranges[mi]; if(!r)return;
+      // zone cliquable : toute la mesure (sauf la toute dernière mesure du morceau)
+      if(MEP.editBreaks && mi!==(MEP._N-1)){
+        svg+='<rect class="mep-cell" data-mi="'+mi+'" x="'+r.x0.toFixed(1)+'" y="0" width="'+(r.x1-r.x0).toFixed(1)+'" height="'+contentH.toFixed(1)+'"/>';
+      }
+      // repère visuel si un saut est posé après cette mesure
+      const b=eb[mi];
+      if(b&&(b.line||b.page)){
+        const gl=b.page?'⤓':'↵';
+        svg+='<text x="'+(r.x1-2).toFixed(1)+'" y="9" font-size="12" text-anchor="end" font-family="sans-serif" fill="'+(b.page?'#c0392b':'#185fa5')+'">'+gl+'</text>';
+      }
+    });
+    return svg;
+  }
+  function voiceBlockHBottom(){
+    const last=MEP.visible[MEP.visible.length-1];
+    return voiceBlockH(last)-STAFF; // partie sous la dernière portée
+  }
+
+  // wrapper qui force single=true en injectant un "layout" partagé dans MEP_drawVoiceLine
+  function MEP_drawVoiceLineSingle(lineData, staffTop, isFirstDocLine, layout){
+    return MEP_drawVoiceLine(lineData, staffTop, isFirstDocLine, 1, MEP._isTopVoice, layout);
+  }
+
+  // =====================================================================
+  //  Bloc des paroles finales (champ W:) — affiché à la fin, en plus gros
+  // =====================================================================
+  function wordsRawLines(){
+    if(MEP._words&&MEP._words.length){
+      const arr=MEP._words.slice();
+      while(arr.length && !arr[arr.length-1].trim())arr.pop(); // retire les vides en fin
+      return arr;
+    }
+    const W=(state.headers.W||'');
+    if(!W.trim())return [];
+    return W.replace(/\s+$/,'').split('\n');
+  }
+  const WORDS_FS=12;                         // taille des paroles finales (« plus gros » que les paroles alignées ~9px)
+  // une ligne W: du fichier = une ligne affichée (pas de renvoi automatique)
+  function wordsPhysicalLines(){ return wordsRawLines(); }
+  function wordsLineH(){ return Math.round(WORDS_FS*1.35); }
+  function wordsBlockHeightUnits(){
+    const n=wordsPhysicalLines().length; if(!n)return 0;
+    return 18 + n*wordsLineH() + 6;
+  }
+  function renderWordsSvg(yTop){
+    const lines=wordsPhysicalLines(); if(!lines.length)return '';
+    const lh=wordsLineH();
+    let svg='<line x1="'+LEFT_PAD+'" y1="'+(yTop+6)+'" x2="'+(MEP._SCORE_W-RIGHT_PAD)+'" y2="'+(yTop+6)+'" stroke="'+MEP.dim+'" stroke-width="0.5"/>';
+    let y=yTop+16+WORDS_FS;
+    lines.forEach(ln=>{
+      svg+='<text x="'+LEFT_PAD+'" y="'+y.toFixed(1)+'" xml:space="preserve" font-size="'+WORDS_FS+'" font-family="ui-monospace,Menlo,Consolas,monospace" fill="'+MEP.ink+'">'+escXml(ln)+'</text>';
+      y+=lh;
+    });
+    return svg;
+  }
+
+  // =====================================================================
+  //  Construction des pages A4
+  // =====================================================================
+  function buildPages(){
+    if(!state.tracks||!state.tracks.length)return [];
+    // largeur/hauteur utiles en mm
+    const usableW_mm=A4_W_MM-2*MEP.marginMM;
+    const usableH_mm=A4_H_MM-2*MEP.marginMM;
+    // SCORE_W (unités) dérivé de la taille des notes
+    MEP._SCORE_W=Math.round(640*100/MEP.scale);
+    MEP._usableLineW=MEP._SCORE_W-LEFT_PAD-RIGHT_PAD;
+    // zone à gauche pour l'accolade et les noms de voix (sinon rognés au bord du viewBox)
+    const hasNames = MEP.visible.some(i=>((state.tracks[i]||{}).name||'').trim());
+    MEP._labelZone = (MEP.visible.length>1 || hasNames) ? 46 : 0;
+    const totalW = MEP._SCORE_W + MEP._labelZone;
+    const mmPerUnit=usableW_mm/totalW;
+    // hauteur dispo en unités, en réservant le bloc-titre sur la 1re page
+    const maxUnitsPage1=(usableH_mm/mmPerUnit)-titleBlockHeightUnits();
+    const maxUnitsPageN=(usableH_mm/mmPerUnit);
+
+    const systems=buildSystems();
+    // éléments à paginer : les systèmes, puis (éventuellement) le bloc W: final
+    const items=systems.map(s=>({type:'system',sys:s,height:s.height,hardPage:!!s.hardPage}));
+    const wH=wordsBlockHeightUnits();
+    if(wH>0)items.push({type:'words',height:wH});
+
+    const pages=[]; let cur=[], used=0, isFirst=true, pendingPageBreak=false;
+    items.forEach(it=>{
+      const cap=isFirst?maxUnitsPage1:maxUnitsPageN;
+      if(cur.length>0 && (used+it.height>cap || pendingPageBreak)){
+        pages.push({items:cur, isFirst}); isFirst=false; cur=[]; used=0;
+      }
+      cur.push(it); used+=it.height;
+      pendingPageBreak = !!it.hardPage;   // saut de page APRÈS ce système
+    });
+    if(cur.length>0)pages.push({items:cur, isFirst});
+    return {pages, mmPerUnit, usableW_mm, usableH_mm};
+  }
+
+  function titleBlockHeightUnits(){
+    // hauteur réservée au titre (en unités du viewBox de la 1re page)
+    const t=(state.headers.T||'').trim();
+    const c=(state.headers.C||'').trim();
+    let h=14;                       // marge haute
+    if(t)h+=18*t.split('\n').length;
+    if(c)h+=12;
+    return h+8;
+  }
+  function renderTitleSvg(){
+    let svg='';
+    const cx=MEP._SCORE_W/2;
+    let y=20;
+    const T=(state.headers.T||'').trim();
+    const C=(state.headers.C||'').trim();
+    if(T){ T.split('\n').forEach((ln,i)=>{ svg+='<text x="'+cx+'" y="'+y+'" font-size="'+(i===0?17:13)+'" font-weight="bold" font-family="serif" fill="'+MEP.ink+'" text-anchor="middle">'+escXml(ln)+'</text>'; y+=i===0?16:13; }); }
+    if(C){ C.split('\n').forEach(ln=>{ svg+='<text x="'+(MEP._SCORE_W-RIGHT_PAD)+'" y="'+y+'" font-size="10" font-style="italic" font-family="serif" fill="'+MEP.ink+'" text-anchor="end">'+escXml(ln)+'</text>'; y+=12; }); }
+    return svg;
+  }
+
+  // applique les options de vue dans state.viewFlags (utilisé par le corps de rendu)
+  function applyViewFlags(){
+    state.viewFlags.lyrics=MEP.showLyrics;
+    state.viewFlags.chords=MEP.showChords;
+    state.viewFlags.text=MEP.showChords;
+    state.viewFlags.measureNums=MEP.showMeasureNums;
+    state.viewFlags.parts=true;
+  }
+
+  function renderPages(){
+    const host=document.getElementById('mep-pages');
+    if(!host)return;
+    if(!state.tracks||!state.tracks.length||!MEP.visible.length){
+      host.innerHTML='<div class="mep-empty">Importez ou collez une partition ABC pour générer la mise en page.</div>';
+      const ci=document.getElementById('mep-count'); if(ci)ci.textContent='—';
+      return;
+    }
+    applyViewFlags();
+    const built=buildPages();
+    const {pages, usableW_mm}=built;
+    const html=[];
+    pages.forEach((pg,pi)=>{
+      // hauteur du contenu de cette page (unités)
+      let contentH=pg.items.reduce((a,it)=>a+it.height,0);
+      let topOffset=0, titleSvg='';
+      if(pg.isFirst){ titleSvg=renderTitleSvg(); topOffset=titleBlockHeightUnits(); contentH+=topOffset; }
+      // composer le SVG de page
+      let inner='';
+      if(titleSvg)inner+=titleSvg;
+      let y=topOffset;
+      pg.items.forEach(it=>{
+        if(it.type==='system'){ inner+='<g transform="translate(0,'+y+')">'+renderSystem(it.sys)+'</g>'; }
+        else if(it.type==='words'){ inner+=renderWordsSvg(y); }
+        y+=it.height;
+      });
+      const vbH=contentH;
+      const lz=MEP._labelZone||0;
+      const pageSvg='<svg class="mep-svg" viewBox="'+(-lz)+' 0 '+(MEP._SCORE_W+lz)+' '+vbH+'" xmlns="http://www.w3.org/2000/svg" '
+        +'style="width:'+usableW_mm+'mm;" preserveAspectRatio="xMinYMin meet">'+inner+'</svg>';
+      const mainTitle=(state.headers.T||'').split('\n')[0].trim();
+      html.push(
+        '<div class="mep-page">'
+        +'<div class="mep-pagebody" style="padding:'+MEP.marginMM+'mm;">'+pageSvg+'</div>'
+        +'<div class="mep-folio" style="padding:0 '+MEP.marginMM+'mm;"><span class="ft">'+escXml(mainTitle)+'</span><span class="fn">'+(pi+1)+' / '+pages.length+'</span></div>'
+        +'</div>'
+      );
+    });
+    host.innerHTML=html.join('');
+    const ci=document.getElementById('mep-count'); if(ci)ci.textContent=pages.length+' page'+(pages.length>1?'s':'');
+    // zones cliquables : poser/enlever un saut (cycle aucun → ligne → page → aucun)
+    if(MEP.editBreaks){
+      host.querySelectorAll('.mep-cell').forEach(cell=>{
+        cell.addEventListener('click',()=>{
+          const mi=parseInt(cell.getAttribute('data-mi'),10);
+          const eb=effectiveBreaks();
+          const cur=eb[mi]?(eb[mi].page?'page':'line'):'none';
+          const next= cur==='none'?'line':(cur==='line'?'page':'none');
+          MEP.userBreaks=MEP.userBreaks||{}; MEP.userBreaks[mi]=next;
+          renderPages();
+        });
+      });
+    }
+    // restaurer
+    state.activeTrack=MEP.visible.length?MEP.visible[0]:0;
+  }
+
+  // =====================================================================
+  //  Chargement ABC
+  // =====================================================================
+  function loadAbcText(text){
+    MEP._tunes=splitTunesSmart(text);
+    MEP._tuneIdx=0;
+    return loadTuneByIndex(0);
+  }
+
+  // découpe un fichier en morceaux : nouveau morceau à chaque X:, ou à un T:
+  // rencontré APRÈS que des notes aient déjà été vues (cas tunebook sans X: répété)
+  function splitTunesSmart(text){
+    // retire les commentaires et directives (%…, %%…) comme le fait le moteur,
+    // pour éviter qu'un en-tête de fichier (%%DSET%Reels,…) soit pris pour un morceau/des notes
+    const strip=l=>{ const m=String(l).match(/^(.*?)(?:%.*)?$/); return m?m[1]:l; };
+    const lines=String(text).split(/\r?\n/).map(strip);
+    const isHeader=l=>/^\s*[A-Za-z]:/.test(l.trim());
+    const looksLikeMusic=l=>{ const t=l.trim(); if(!t||isHeader(t))return false; return /[A-Ga-gz|\[\]]/.test(t); };
+    const blocks=[]; let cur=null, curHasBody=false;
+    for(const line of lines){
+      const isX=/^\s*X:/.test(line), isT=/^\s*T:/.test(line);
+      if(isX || (isT && curHasBody)){ if(cur)blocks.push(cur); cur={lines:[],title:''}; curHasBody=false; }
+      if(!cur){ cur={lines:[],title:''}; curHasBody=false; }
+      cur.lines.push(line);
+      if(!cur.title){ const tm=line.match(/^\s*T:\s*(.*)$/); if(tm)cur.title=tm[1].trim(); }
+      if(looksLikeMusic(line))curHasBody=true;
+    }
+    if(cur)blocks.push(cur);
+    const out=blocks.map((b,i)=>{
+      let txt=b.lines.join('\n');
+      if(!/^\s*X:/m.test(txt))txt='X:'+(i+1)+'\n'+txt;     // X: synthétique si absent
+      return {title:b.title||('Morceau '+(i+1)), abc:txt};
+    }).filter(b=>b.abc.split('\n').some(l=>!/^\s*[A-Za-z]:/.test(l.trim())&&/[A-Ga-gz]/.test(l)));
+    return out.length?out:[{title:'Morceau 1', abc:text}];
+  }
+
+  function loadTuneByIndex(idx){
+    const tune=(MEP._tunes||[])[idx]; if(!tune)return false;
+    const ns=parseAbcText(tune.abc);
+    if(!ns||!ns.tracks||!ns.tracks.length){
+      alert('Texte ABC non reconnu (en-tête ou corps manquant).'); return false;
+    }
+    state.headers=ns.headers||state.headers;
+    state.tracks=ns.tracks;
+    state.activeTrack=0;
+    state.tempo=ns.tempo||state.tempo;
+    state.tempoBeatUnit=ns.tempoBeatUnit||1;
+    state.tempoBeatDotted=!!ns.tempoBeatDotted;
+    state.tempoChanges=ns.tempoChanges||{};
+    state.breaks=ns.breaks||{};
+    MEP.userBreaks={};   // sauts manuels remis à zéro (indices de mesure spécifiques au morceau)
+    // lignes W: BRUTES (le parseur rogne les espaces ; on garde l'alignement d'origine)
+    MEP._words=[];
+    tune.abc.split(/\r?\n/).forEach(l=>{ const m=l.match(/^\s*W:(.*)$/); if(m)MEP._words.push(m[1].replace(/^ /,'')); });
+    MEP._tuneIdx=idx;
+    MEP.visible=state.tracks.map((t,i)=>i);
+    buildVoiceToggles();
+    buildTuneSelector();
+    return true;
+  }
+
+  function buildTuneSelector(){
+    const wrap=document.getElementById('mep-tune-row'), sel=document.getElementById('mep-tune');
+    if(!wrap||!sel)return;
+    const tunes=MEP._tunes||[];
+    if(tunes.length<2){ wrap.style.display='none'; sel.innerHTML=''; return; }
+    wrap.style.display='';
+    sel.innerHTML=tunes.map((t,i)=>'<option value="'+i+'"'+(i===MEP._tuneIdx?' selected':'')+'>'+escXml((i+1)+'. '+t.title)+'</option>').join('');
+  }
+
+  // =====================================================================
+  //  Interface
+  // =====================================================================
+  function buildVoiceToggles(){
+    const box=document.getElementById('mep-voices'); if(!box)return;
+    box.innerHTML='';
+    state.tracks.forEach((t,i)=>{
+      const id='mepv'+i;
+      const lab=document.createElement('label'); lab.className='mep-chk';
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.id=id; cb.checked=MEP.visible.includes(i);
+      cb.addEventListener('change',()=>{
+        if(cb.checked){ if(!MEP.visible.includes(i)){MEP.visible.push(i); MEP.visible.sort((a,b)=>a-b);} }
+        else MEP.visible=MEP.visible.filter(x=>x!==i);
+        renderPages();
+      });
+      lab.appendChild(cb);
+      const sp=document.createElement('span'); sp.textContent=(t.name||('V'+(i+1)));
+      lab.appendChild(sp);
+      box.appendChild(lab);
+    });
+  }
+
+  function printPages(){
+    document.body.classList.add('mep-printing');
+    window.print();
+    setTimeout(()=>document.body.classList.remove('mep-printing'),300);
+  }
+
+  function bindUI(){
+    const fileInput=document.getElementById('mep-file');
+    fileInput.addEventListener('change',e=>{
+      const f=e.target.files[0]; if(!f)return;
+      MEP.fileName=f.name.replace(/\.[^.]+$/,'');
+      const r=new FileReader();
+      r.onload=()=>{
+        document.getElementById('mep-abc').value=r.result;
+        try{ if(loadAbcText(r.result))renderPages(); }
+        catch(err){ alert('Erreur de lecture du fichier ABC : '+err.message); }
+        // réinitialise pour permettre de recharger le même fichier
+        e.target.value='';
+      };
+      r.onerror=()=>{ alert('Impossible de lire le fichier.'); e.target.value=''; };
+      r.readAsText(f,'utf-8');
+    });
+    document.getElementById('mep-load').addEventListener('click',()=>{
+      const txt=document.getElementById('mep-abc').value;
+      try{ if(txt.trim()&&loadAbcText(txt))renderPages(); }
+      catch(err){ alert('Erreur de lecture du texte ABC : '+err.message); }
+    });
+    document.getElementById('mep-print').addEventListener('click',printPages);
+
+    const tuneSel=document.getElementById('mep-tune');
+    if(tuneSel)tuneSel.addEventListener('change',()=>{ if(loadTuneByIndex(parseInt(tuneSel.value,10)||0))renderPages(); });
+
+    const bindRange=(id,prop,out,fmt)=>{
+      const el=document.getElementById(id);
+      el.addEventListener('input',()=>{ MEP[prop]=parseInt(el.value,10);
+        if(out)document.getElementById(out).textContent=fmt?fmt(MEP[prop]):MEP[prop];
+        renderPages(); });
+    };
+    bindRange('mep-scale','scale','mep-scale-val',v=>v+'%');
+    bindRange('mep-margin','marginMM','mep-margin-val',v=>v+' mm');
+    document.getElementById('mep-mps').addEventListener('change',e=>{ MEP.measuresPerSystem=parseInt(e.target.value,10)||0; renderPages(); });
+
+    const bindChk=(id,prop)=>{ const el=document.getElementById(id);
+      el.addEventListener('change',()=>{ MEP[prop]=el.checked; renderPages(); }); };
+    bindChk('mep-lyrics','showLyrics');
+    bindChk('mep-chords','showChords');
+    bindChk('mep-nums','showMeasureNums');
+    bindChk('mep-justify','justify');
+
+    // espacement vertical des paroles (+/-, pas de 1)
+    const lyVal=document.getElementById('mep-ly-val');
+    const setLy=(d)=>{ MEP.lyricOffset=Math.max(-8,Math.min(40,MEP.lyricOffset+d));
+      if(lyVal)lyVal.textContent=MEP.lyricOffset; renderPages(); };
+    const lm=document.getElementById('mep-ly-minus'); if(lm)lm.addEventListener('click',()=>setLy(-1));
+    const lp=document.getElementById('mep-ly-plus'); if(lp)lp.addEventListener('click',()=>setLy(1));
+
+    // écart vertical entre voix (+/-, pas de 1, peut être négatif)
+    const vgVal=document.getElementById('mep-vg-val');
+    const setVg=(d)=>{ MEP.voiceGap=Math.max(-30,Math.min(60,MEP.voiceGap+d));
+      if(vgVal)vgVal.textContent=MEP.voiceGap; renderPages(); };
+    const vm=document.getElementById('mep-vg-minus'); if(vm)vm.addEventListener('click',()=>setVg(-1));
+    const vp=document.getElementById('mep-vg-plus'); if(vp)vp.addEventListener('click',()=>setVg(1));
+
+    // espacement horizontal des notes (+/-, pas de 1, négatif = serré)
+    const nsVal=document.getElementById('mep-ns-val');
+    const setNs=(d)=>{ MEP.noteSpacing=Math.max(-12,Math.min(24,MEP.noteSpacing+d));
+      if(nsVal)nsVal.textContent=MEP.noteSpacing; renderPages(); };
+    const nm=document.getElementById('mep-ns-minus'); if(nm)nm.addEventListener('click',()=>setNs(-1));
+    const np=document.getElementById('mep-ns-plus'); if(np)np.addEventListener('click',()=>setNs(1));
+
+    // écart vertical entre systèmes (+/-, pas de 1, peut être négatif)
+    const sgVal=document.getElementById('mep-sg-val');
+    const setSg=(d)=>{ MEP.systemGap=Math.max(-20,Math.min(80,MEP.systemGap+d));
+      if(sgVal)sgVal.textContent=MEP.systemGap; renderPages(); };
+    const sm=document.getElementById('mep-sg-minus'); if(sm)sm.addEventListener('click',()=>setSg(-1));
+    const sp=document.getElementById('mep-sg-plus'); if(sp)sp.addEventListener('click',()=>setSg(1));
+
+    // mode « poser/enlever les sauts en cliquant »
+    const eb=document.getElementById('mep-editbrk');
+    if(eb)eb.addEventListener('change',()=>{ MEP.editBreaks=eb.checked; renderPages(); });
+    const rb=document.getElementById('mep-resetbrk');
+    if(rb)rb.addEventListener('click',()=>{ MEP.userBreaks={}; renderPages(); });
+
+    document.getElementById('mep-sample').addEventListener('click',()=>{
+      const ex=SAMPLE_ABC;
+      document.getElementById('mep-abc').value=ex;
+      MEP.fileName='Vuelie';
+      if(loadAbcText(ex))renderPages();
+    });
+  }
+
+  // exemple intégré (Vuelie) pour test rapide
+  const SAMPLE_ABC=`X:1\nT:Vuelie (exemple)\nC:Frozen — arr. SATB\nM:2/4\nL:1/16\nQ:1/4=90\nK:C\nV:1 clef=treble name=\"S\"\nV:2 clef=treble name=\"A\"\nV:3 clef=treble-8 name=\"T\"\nV:4 clef=treble-8 name=\"B\"\nV:1\n_E8-|_E8-|_E8|z8|_E6 E2-|_E4 E2 z2|_E4 F4-|F4 D4|_E8|F8-|F4 z4|\nw:na na na na ha ha ya na na ha ya\nV:2\n_E6 E2-|_E2E2 E2E2|_E4 E4-|_E8-|_E4 z4|_E8-|_E8|z8|_E6 E2-|_E4 E2 z2|_E4 z4|\nw:na na na na ha ya na na ha na ya\nV:3\nK:C clef=treble-8\n_B6 _A2-|_A2G2 A2_B2|_A4 _B4-|_B8-|_B4 z4|_B8-|_B8|z8|_B6 B2-|_B4 B2 z2|_B4 z4|\nw:na na na na ha ya na na ha na ya\nV:4\nK:C clef=treble-8\n_E3E E2E2|F2_E2 E4|_E2F2 F2G2|_E2 F6|z2 F2 G2F2|G2F_E E2F2|C4 _E4|_E2E2 F2_B,2|C2_E2 F4-|F8-|F4 z4|\nw:Na na a ya hè ya na ha hi ya ha na ha na hè ya hè ya na`;
+
+  // init
+  bindUI();
+  updateMepBadge();
+  function updateMepBadge(){ const b=document.getElementById('mep-ver'); if(b)b.textContent='v1.13'; }
+
+})();
+</script>
+</body>
+</html>
