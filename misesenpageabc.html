@@ -20,6 +20,8 @@
   .mep-sec h2{ font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:#5f5e5a; margin:0 0 8px; }
   .mep-row{ display:flex; align-items:center; gap:8px; margin:6px 0; font-size:13px; }
   .mep-row label{ flex:0 0 auto; }
+  .mep-row.mep-stepper label{ flex:1 1 auto; }
+  .mep-row.mep-stepper .val{ min-width:34px; text-align:center; }
   .mep-row input[type=range]{ flex:1; }
   .mep-row .val{ flex:0 0 auto; min-width:44px; text-align:right; color:var(--accent); font-weight:700; font-size:12px; }
   textarea#mep-abc{ width:100%; height:120px; resize:vertical; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; border:1px solid var(--line); border-radius:6px; padding:6px; }
@@ -36,6 +38,10 @@
   .mep-cell:hover{ fill:rgba(24,95,165,0.10); }
   #mep-voices{ display:flex; flex-direction:column; gap:2px; }
   .mep-hint{ font-size:11px; color:#8a877e; line-height:1.4; }
+  .mep-sec h2.mep-sechead{ cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center; }
+  .mep-sec h2.mep-sechead::after{ content:'▾'; font-size:11px; color:#8a877e; }
+  .mep-sec.collapsed h2.mep-sechead::after{ content:'▸'; }
+  .mep-sec.collapsed .mep-secbody{ display:none; }
 
   /* ---- zone de pages ---- */
   .mep-view{ padding:24px; overflow:auto; height:100vh; }
@@ -48,6 +54,8 @@
   .mep-svg text{ font-family:serif; }
   .mep-folio{ position:absolute; bottom:8mm; left:0; right:0; display:flex; justify-content:space-between; align-items:baseline; box-sizing:border-box; font-size:10px; color:#8a877e; }
   .mep-folio .ft{ font-style:italic; }
+  .mep-folio .fn{ display:flex; gap:12px; align-items:baseline; }
+  .mep-folio .fv{ font-style:italic; }
   .mep-empty{ color:#cfcdc6; text-align:center; padding:60px 20px; font-size:14px; }
 
   /* ---- impression ---- */
@@ -69,12 +77,11 @@
 <div class="mep-wrap">
   <aside class="mep-panel">
     <h1>Mise en page ABC</h1>
-    <span class="mep-badge">A4 — <b id="mep-ver">v1.13</b></span>
+    <span class="mep-badge">A4 — <b id="mep-ver">v1.20</b></span>
 
     <div class="mep-sec">
       <h2>Partition</h2>
       <input type="file" id="mep-file" class="mep-file" accept=".abc,.txt,text/plain">
-      <textarea id="mep-abc" placeholder="Collez ici le texte ABC…"></textarea>
       <button class="mep-btn" id="mep-load">Générer la mise en page</button>
       <button class="mep-btn" id="mep-sample">Charger l'exemple (Vuelie)</button>
       <div class="mep-row" id="mep-tune-row" style="display:none; margin-top:8px;">
@@ -84,13 +91,25 @@
     </div>
 
     <div class="mep-sec">
-      <h2>Disposition</h2>
-      <div class="mep-row"><label>Taille</label><input type="range" id="mep-scale" min="60" max="160" step="5" value="100"><span class="val" id="mep-scale-val">100%</span></div>
-      <div class="mep-row"><label>Marges</label><input type="range" id="mep-margin" min="8" max="28" step="1" value="16"><span class="val" id="mep-margin-val">16 mm</span></div>
-      <div class="mep-row"><label>Espacement notes</label>
-        <button class="mep-step" id="mep-ns-minus" type="button" title="Resserrer les notes">−</button>
-        <span class="val" id="mep-ns-val">0</span>
-        <button class="mep-step" id="mep-ns-plus" type="button" title="Aérer les notes">+</button>
+      <h2>Code ABC</h2>
+      <textarea id="mep-abc" placeholder="Collez ici le texte ABC…"></textarea>
+    </div>
+
+    <div class="mep-sec">
+      <h2>Page</h2>
+      <div class="mep-row mep-stepper"><label>Taille</label>
+        <button class="mep-step" id="mep-scale-m5" type="button" title="-5">-5</button>
+        <button class="mep-step" id="mep-scale-m1" type="button" title="-1">−1</button>
+        <span class="val" id="mep-scale-val">100%</span>
+        <button class="mep-step" id="mep-scale-p1" type="button" title="+1">+1</button>
+        <button class="mep-step" id="mep-scale-p5" type="button" title="+5">+5</button>
+      </div>
+      <div class="mep-row mep-stepper"><label>Marges</label>
+        <button class="mep-step" id="mep-margin-m5" type="button" title="-5">-5</button>
+        <button class="mep-step" id="mep-margin-m1" type="button" title="-1">−1</button>
+        <span class="val" id="mep-margin-val">16 mm</span>
+        <button class="mep-step" id="mep-margin-p1" type="button" title="+1">+1</button>
+        <button class="mep-step" id="mep-margin-p5" type="button" title="+5">+5</button>
       </div>
       <div class="mep-row"><label>Mes./système</label>
         <select id="mep-mps">
@@ -102,34 +121,96 @@
     </div>
 
     <div class="mep-sec">
+      <h2>Notes</h2>
+      <div class="mep-row"><label>Espacement notes</label>
+        <button class="mep-step" id="mep-ns-minus" type="button" title="Resserrer les notes">&minus;</button>
+        <span class="val" id="mep-ns-val">0</span>
+        <button class="mep-step" id="mep-ns-plus" type="button" title="Aérer les notes">+</button>
+      </div>
+      <label class="mep-chk"><input type="checkbox" id="mep-justify"> Justifier les lignes sur la largeur</label>
+    </div>
+
+    <div class="mep-sec">
       <h2>Voix</h2>
       <div id="mep-voices"></div>
     </div>
 
     <div class="mep-sec">
-      <h2>Affichage</h2>
-      <label class="mep-chk"><input type="checkbox" id="mep-lyrics" checked> Paroles</label>
-      <label class="mep-chk"><input type="checkbox" id="mep-chords" checked> Accords / indications</label>
-      <label class="mep-chk"><input type="checkbox" id="mep-nums"> Numéros de mesure</label>
-      <div class="mep-row" style="margin-top:8px;"><label>Espacement paroles</label>
-        <button class="mep-step" id="mep-ly-minus" type="button" title="Rapprocher">−</button>
-        <span class="val" id="mep-ly-val">0</span>
-        <button class="mep-step" id="mep-ly-plus" type="button" title="Éloigner">+</button>
-      </div>
+      <h2>Espacements</h2>
       <div class="mep-row"><label>Écart entre voix</label>
-        <button class="mep-step" id="mep-vg-minus" type="button" title="Rapprocher les voix">−</button>
+        <button class="mep-step" id="mep-vg-minus" type="button" title="Rapprocher les voix">&minus;</button>
         <span class="val" id="mep-vg-val">10</span>
         <button class="mep-step" id="mep-vg-plus" type="button" title="Éloigner les voix">+</button>
       </div>
       <div class="mep-row"><label>Écart entre systèmes</label>
-        <button class="mep-step" id="mep-sg-minus" type="button" title="Rapprocher les systèmes">−</button>
+        <button class="mep-step" id="mep-sg-minus" type="button" title="Rapprocher les systèmes">&minus;</button>
         <span class="val" id="mep-sg-val">20</span>
         <button class="mep-step" id="mep-sg-plus" type="button" title="Éloigner les systèmes">+</button>
       </div>
-      <label class="mep-chk"><input type="checkbox" id="mep-justify"> Justifier les lignes sur la largeur</label>
-      <label class="mep-chk" style="margin-top:6px;"><input type="checkbox" id="mep-editbrk"> Sauts cliquables (<span style="color:#185fa5">↵</span> ligne / <span style="color:#c0392b">⤓</span> page)</label>
+      <div class="mep-row"><label>Hauteur voltas/accords</label>
+        <button class="mep-step" id="mep-ab-minus" type="button" title="Rapprocher de la portée">&minus;</button>
+        <span class="val" id="mep-ab-val">0</span>
+        <button class="mep-step" id="mep-ab-plus" type="button" title="Éloigner de la portée">+</button>
+      </div>
+    </div>
+
+    <div class="mep-sec">
+      <h2>Paroles</h2>
+      <label class="mep-chk"><input type="checkbox" id="mep-lyrics" checked> Afficher les paroles (w:)</label>
+      <div class="mep-row"><label>Taille paroles</label>
+        <button class="mep-step" id="mep-lys-minus" type="button" title="Réduire">&minus;</button>
+        <span class="val" id="mep-lys-val">9</span>
+        <button class="mep-step" id="mep-lys-plus" type="button" title="Agrandir">+</button>
+      </div>
+      <label class="mep-chk" style="margin-top:6px;"><input type="checkbox" id="mep-words" checked> Afficher les paroles finales (W:)</label>
+      <div class="mep-row"><label>Taille paroles finales (W:)</label>
+        <button class="mep-step" id="mep-ws-minus" type="button" title="Réduire">&minus;</button>
+        <span class="val" id="mep-ws-val">12</span>
+        <button class="mep-step" id="mep-ws-plus" type="button" title="Agrandir">+</button>
+      </div>
+      <div class="mep-row"><label>Position zone W:</label>
+        <button class="mep-step" id="mep-wo-minus" type="button" title="Remonter">&minus;</button>
+        <span class="val" id="mep-wo-val">0</span>
+        <button class="mep-step" id="mep-wo-plus" type="button" title="Descendre">+</button>
+      </div>
+      <div class="mep-row"><label>Marge gauche W:</label>
+        <button class="mep-step" id="mep-wl-minus" type="button" title="Reduire la marge">&minus;</button>
+        <span class="val" id="mep-wl-val">0</span>
+        <button class="mep-step" id="mep-wl-plus" type="button" title="Augmenter la marge">+</button>
+      </div>
+    </div>
+
+    <div class="mep-sec">
+      <h2>Affichage</h2>
+      <label class="mep-chk"><input type="checkbox" id="mep-chords" checked> Accords / indications</label>
+      <div class="mep-row"><label>Taille accords</label>
+        <button class="mep-step" id="mep-chs-minus" type="button" title="Réduire">−</button>
+        <span class="val" id="mep-chs-val">9</span>
+        <button class="mep-step" id="mep-chs-plus" type="button" title="Agrandir">+</button>
+      </div>
+      <div class="mep-row"><label>Taille texte</label>
+        <button class="mep-step" id="mep-txs-minus" type="button" title="Réduire">−</button>
+        <span class="val" id="mep-txs-val">6</span>
+        <button class="mep-step" id="mep-txs-plus" type="button" title="Agrandir">+</button>
+      </div>
+      <div class="mep-row"><label>Numéros de mesure</label>
+        <select id="mep-nums">
+          <option value="none" selected>Aucun</option>
+          <option value="first">Début de ligne</option>
+          <option value="all">Toutes</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mep-sec">
+      <h2>Sauts</h2>
+      <label class="mep-chk"><input type="checkbox" id="mep-editbrk"> Sauts cliquables</label>
+      <div class="mep-row" id="mep-brkmode-row" style="display:none; gap:14px;">
+        <label class="mep-chk" style="padding:0;"><input type="radio" name="mep-brkmode" id="mep-brk-line" value="line" checked> <span style="color:#185fa5">&#8629;</span> Saut de ligne</label>
+        <label class="mep-chk" style="padding:0;"><input type="radio" name="mep-brkmode" id="mep-brk-page" value="page"> <span style="color:#c0392b">&#10515;</span> Saut de page</label>
+      </div>
       <button class="mep-btn" id="mep-resetbrk" type="button">Réinitialiser les sauts</button>
-      <p class="mep-hint">Quand « Sauts cliquables » est coché, cliquez une mesure pour faire défiler : aucun saut → saut de ligne ↵ → saut de page ⤓ → aucun.</p>
+      <p class="mep-hint">Cochez Sauts cliquables, choisissez le type, puis cliquez une mesure pour poser ou enlever le saut après cette mesure.</p>
     </div>
 
     <button class="mep-btn primary" id="mep-print">Imprimer / PDF</button>
@@ -1122,8 +1203,11 @@
       }
     }
     const nAccs=keySigAccidentals(hK,hC).length;
+    // ligne « clé seule » (ni armure, ni bécarres, ni rythme) : en-tête minimal, juste un petit
+    // dégagement après la clé — on récupère l'espace vers la gauche.
+    if(nNat+nAccs===0 && !isFirstLineOfDoc) return 2;   // firstX = LEFT_PAD - 18
     // positions relatives à LEFT_PAD, fidèles au dessin de l'en-tête :
-    // l'armure démarre à LEFT_PAD-23 ; chaque altération/bécarre = 6px
+    // l'armure démarre à LEFT_PAD-20 ; chaque altération/bécarre = 6px
     let x = -20 + (nNat+nAccs)*6;          // bord droit de l'armure
     if(isFirstLineOfDoc){ const mpos=Math.max(x+9,-8); x=mpos+4; }  // métrique (centrée à mpos)
     x += 8;                                 // marge avant la 1re note
@@ -1719,7 +1803,7 @@
     const usableLineW=MEP._usableLineW;
     const pageStart=0;
     const nVerses=MEP.showLyrics?Math.max(1,countVersesTrack(state.measures)):1;
-    const lyricOff=MEP.lyricOffset||0;
+    const lyricOff=(MEP.lyricOffsets&&MEP.lyricOffsets[state.activeTrack])||0;
     const LYRIC_ROW=10;
     const lsm=lineData.mIdxs[0];
       // 5 lignes de portee
@@ -1796,7 +1880,11 @@
       }
       }
       // Dessiner les barres de mesure
+      // Pas de barre de tête (i===0) quand le système n'a qu'une clé (ni armure, ni rythme, ni bécarres d'annulation)
+      let headerHasContent = (keySigAccidentals(hK,hC).length>0) || isFirstDocLine;
+      if(!headerHasContent && lsm>0 && keyAt(lsm-1)!==hK) headerHasContent=true;  // bécarres d'annulation
       for(let i=0;i<=lineData.mIdxs.length;i++){
+        if(i===0 && !headerHasContent)continue;
         const x=(i===0)?measureBounds[0].xL:measureBounds[i-1].xR;
         svg+='<line x1="'+x+'" y1="'+staffTop+'" x2="'+x+'" y2="'+(staffTop+4*LINE_GAP)+'" stroke="'+ink+'" stroke-width="'+(i===0?1.1:0.7)+'" opacity="0.7"/>';
       }
@@ -1860,10 +1948,10 @@
             svg+='<line x1="'+(xR-2)+'" y1="'+staffTop+'" x2="'+(xR-2)+'" y2="'+(staffTop+4*LINE_GAP)+'" stroke="'+ink+'" stroke-width="2"/>';
           }
           if(r.volta){
-            const yV=staffTop-11;
+            const yV=staffTop-13-(MEP.aboveOffset||0);
             svg+='<line x1="'+(xL+2)+'" y1="'+yV+'" x2="'+(xR-2)+'" y2="'+yV+'" stroke="'+ink+'" stroke-width="0.8"/>';
-            svg+='<line x1="'+(xL+2)+'" y1="'+yV+'" x2="'+(xL+2)+'" y2="'+(yV+4)+'" stroke="'+ink+'" stroke-width="0.8"/>';
-            svg+='<text x="'+(xL+5)+'" y="'+(yV+6)+'" font-size="8" fill="'+ink+'" font-weight="bold">'+r.volta+'.</text>';
+            svg+='<line x1="'+(xL+2)+'" y1="'+yV+'" x2="'+(xL+2)+'" y2="'+(yV+5)+'" stroke="'+ink+'" stroke-width="0.8"/>';
+            svg+='<text x="'+(xL+5)+'" y="'+(yV+10)+'" font-size="8" fill="'+ink+'" font-weight="bold">'+r.volta+'.</text>';
           }
         }
         const m=state.measures[mIdx];
@@ -1990,11 +2078,12 @@
           // Rectangle cliquable invisible sur toute la zone du slot (selection par clic)
           const iS=(mIdx===hlM&&si===hlS);
           const cl=iS?sel:ink;
-          if(t.chord&&state.viewFlags.chords)svg+='<text x="'+cx+'" y="'+(staffTop-3)+'" font-size="9" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+escXml(t.chord)+'</text>';
-          if(t.text&&state.viewFlags.text)svg+='<text x="'+cx+'" y="'+(staffTop-(t.chord&&state.viewFlags.chords?13:3))+'" font-size="6" font-style="italic" fill="'+ink+'" text-anchor="middle">'+escXml(t.text)+'</text>';
+          const aOff=(MEP.aboveOffset||0); const chFS=MEP.chordSize||9; const txFS=MEP.textSize||6;
+          if(t.chord&&state.viewFlags.chords)svg+='<text x="'+cx+'" y="'+(staffTop-3-aOff)+'" font-size="'+chFS+'" font-weight="bold" fill="'+ink+'" text-anchor="middle">'+escXml(t.chord)+'</text>';
+          if(t.text&&state.viewFlags.text)svg+='<text x="'+cx+'" y="'+(staffTop-(t.chord&&state.viewFlags.chords?13:3)-aOff)+'" font-size="'+txFS+'" font-style="italic" fill="'+ink+'" text-anchor="middle">'+escXml(t.text)+'</text>';
           if(t.orn&&t.orn.length){
             const ot=t.orn.filter(o=>o!=='.').map(o=>{if(o==='~')return'tr';if(o==='T')return'tr';if(o==='M')return'∼';if(o==='P')return'∿';if(o==='H')return'𝄐';if(o==='L')return'>';if(o==='u')return'⋁';if(o==='v')return'⊓';if(o==='O')return'⊕';return o}).join(' ');
-            if(ot)svg+='<text x="'+cx+'" y="'+(staffTop-12)+'" font-size="8" font-style="italic" fill="'+ink+'" text-anchor="middle">'+ot+'</text>';
+            if(ot)svg+='<text x="'+cx+'" y="'+(staffTop-12-aOff)+'" font-size="8" font-style="italic" fill="'+ink+'" text-anchor="middle">'+ot+'</text>';
           }
           if(t.type==='note'){
             const gp=sTG[si];
@@ -2053,8 +2142,9 @@
             }
           }
           if(si===0){
-            if(state.viewFlags.measureNums)svg+='<text x="'+(xL+2)+'" y="'+(staffTop-3)+'" font-size="8" fill="'+dim+'">'+String(mIdx+1)+'</text>';
-            if(state.viewFlags.parts&&state.parts&&state.parts[mIdx])svg+='<text x="'+(xL+2)+'" y="'+(staffTop-14)+'" font-size="11" font-weight="bold" fill="'+ink+'">'+escXml(state.parts[mIdx])+'</text>';
+            if(state.viewFlags.measureNums && (MEP.measureNumMode!=='first' || i===0))svg+='<text x="'+(xL+2)+'" y="'+(staffTop-3)+'" font-size="8" fill="'+dim+'">'+String(mIdx+1)+'</text>';
+            const partsMap=(MEP._parts&&Object.keys(MEP._parts).length)?MEP._parts:state.parts;
+            if(state.viewFlags.parts&&__isTopVoice&&partsMap&&partsMap[mIdx])svg+='<text x="'+(xL+2)+'" y="'+(staffTop-14)+'" font-size="11" font-weight="bold" fill="'+ink+'">'+escXml(partsMap[mIdx])+'</text>';
             // Indication de tempo : mesure 0 (tempo initial) ou toute mesure avec changement.
             // Affichée sur la voix VISIBLE LA PLUS HAUTE (pas forcément la voix active).
             const tc=state.tempoChanges||{};
@@ -2085,8 +2175,9 @@
               const core=raw.replace(/-+$/,'');
               const lyricDisplay=core.replace(/_/g,'').replace(/~/g,' ');
               const ly=staffTop+4*LINE_GAP+13+lyricOff+(v-1)*LYRIC_ROW;
-              svg+='<text x="'+cx+'" y="'+ly+'" font-size="9" fill="'+ink+'" text-anchor="middle" font-family="sans-serif">'+escXml(lyricDisplay)+'</text>';
-              if(showDash)svg+='<text x="'+(cx+5)+'" y="'+ly+'" font-size="9" fill="'+dim+'" text-anchor="start" font-family="sans-serif">-</text>';
+              const lyFS=MEP.lyricSize||9;
+              svg+='<text x="'+cx+'" y="'+ly+'" font-size="'+lyFS+'" fill="'+ink+'" text-anchor="middle" font-family="sans-serif">'+escXml(lyricDisplay)+'</text>';
+              if(showDash)svg+='<text x="'+(cx+5)+'" y="'+ly+'" font-size="'+lyFS+'" fill="'+dim+'" text-anchor="start" font-family="sans-serif">-</text>';
             }
           }
           // Zone cliquable invisible pour selectionner ce slot
@@ -2197,17 +2288,27 @@
     measuresPerSystem:0,  // 0 = automatique (selon largeur)
     marginMM:16,          // marges page (mm)
     showLyrics:true,
+    showWords:true,       // afficher le bloc de paroles finales W:
+    wordsOffset:0,        // décalage vertical de la zone W: (évite le chevauchement avec les paroles)
     showChords:true,
     showMeasureNums:false,
     showTempo:true,
     justify:false,        // étirer chaque ligne sur toute la largeur (y compris la dernière)
     ink:'#1a1a1a', dim:'#8a877e',
-    lyricOffset:0,
+    lyricOffsets:{},      // hauteur des paroles PAR PISTE (index voix -> décalage vertical)
+    wordsLeft:0,          // marge de gauche de la zone W:
+    aboveOffset:0,        // hauteur supplémentaire au-dessus de la portée (voltas/accords/ornements)
+    wordsSize:12,         // taille de police du bloc de paroles finales W:
+    lyricSize:9,          // taille de police des paroles alignées w:
+    chordSize:9,          // taille de police des accords
+    textSize:6,           // taille de police des annotations texte ("^...")
+    measureNumMode:'all', // 'all' = toutes les mesures, 'first' = 1re mesure de chaque ligne
     noteSpacing:0,        // densité horizontale des notes (négatif = serré, positif = aéré)
     voiceGap:10,          // écart vertical entre voix d'un même système (réglable, peut être négatif)
     systemGap:20,         // écart vertical entre systèmes (réglable)
     userBreaks:{},        // sauts posés/retirés à la main : index mesure -> 'line'|'page'|'none'
     editBreaks:false,     // mode : cliquer une mesure pour poser/enlever un saut
+    breakMode:'line',     // type de saut posé au clic : 'line' ou 'page' (ligne par défaut)
     visible:[],           // index des voix affichées
     _tunes:[], _tuneIdx:0, _words:[], // morceaux détectés + lignes W: brutes
     _SCORE_W:760, _usableLineW:704, _staffRight:undefined, _isTopVoice:true,
@@ -2235,16 +2336,39 @@
   function versesOf(ti){
     return MEP.showLyrics?trackVerses(ti):0;
   }
-  // hauteur d'un bloc-voix (au-dessus + portée + paroles).
-  // Pas de parole sur la piste → aucun espace de parole réservé.
+  // extension (vers le bas, en unités) de la note la plus grave d'une voix sous la ligne du bas
+  function voiceLowExtent(ti){
+    const tr=state.tracks[ti]; if(!tr||!tr.measures)return 0;
+    const clefChanges=tr.clefChanges||{};
+    let curClef=tr.pieceClef||'treble', maxBelow=0;
+    tr.measures.forEach((m,mi)=>{
+      if(clefChanges[mi])curClef=clefChanges[mi];
+      const ref=clefRefStep(curClef);
+      (m||[]).forEach(s=>{
+        if(s.type!=='note')return;
+        const heads=[];
+        if(s.note&&/[A-Ga-g]/.test(s.note))heads.push(s);
+        if(Array.isArray(s.stack))s.stack.forEach(x=>{ if(x.note&&/[A-Ga-g]/.test(x.note))heads.push(x); });
+        heads.forEach(n=>{
+          const below=(ref-stepIndex(n.note,n.octave||0))*(LINE_GAP/2); // >0 si sous la portée
+          if(below>maxBelow)maxBelow=below;
+        });
+      });
+    });
+    return maxBelow>0 ? maxBelow+6 : 0;   // + rayon de tête / 1re ligne supplémentaire
+  }
+  function lyricOffsetOf(ti){ return (MEP.lyricOffsets&&MEP.lyricOffsets[ti])||0; }
+  function aboveSpace(){ return ABOVE + Math.max(0, MEP.aboveOffset||0); }
+  // hauteur d'un bloc-voix (au-dessus + portée + paroles, et notes très graves).
   function voiceBlockH(ti){
     const nv=versesOf(ti);
-    const below = nv>0 ? (8 + Math.max(0,MEP.lyricOffset) + nv*10) : 8;
-    return ABOVE + STAFF + below;
+    const lyrBelow = nv>0 ? (8 + Math.max(0,lyricOffsetOf(ti)) + nv*10) : 8;
+    const below = Math.max(lyrBelow, voiceLowExtent(ti));
+    return aboveSpace() + STAFF + below;
   }
   function systemH(){
     let h=0; MEP.visible.forEach((ti,k)=>{ h+=voiceBlockH(ti); if(k<MEP.visible.length-1)h+=MEP.voiceGap; });
-    return h + MEP.systemGap;
+    return h;   // hauteur de contenu (sans l'écart entre systèmes)
   }
 
   // ---- largeurs de mesure PARTAGÉES (max sur les voix visibles) → barres alignées ----
@@ -2353,7 +2477,7 @@
   // ---- assemblage d'un système (toutes les voix empilées) en SVG, hauteur = systemH() ----
   function renderSystem(sys){
     let svg='';
-    let y=ABOVE;                       // sommet de la 1re portée
+    let y=aboveSpace();                // sommet de la 1re portée
     const topVi=MEP.visible.length?MEP.visible[0]:0;
     MEP.visible.forEach((ti,k)=>{
       const staffTop=y;
@@ -2376,7 +2500,7 @@
     // accolade reliant les voix d'un système (SATB), à gauche des clés
     if(MEP.visible.length>1){
       const x=LEFT_PAD-42;
-      const yTop=ABOVE, yBot=y-MEP.voiceGap-voiceBlockHBottom();
+      const yTop=aboveSpace(), yBot=y-MEP.voiceGap-voiceBlockHBottom();
       svg='<line x1="'+x+'" y1="'+yTop+'" x2="'+x+'" y2="'+yBot+'" stroke="'+MEP.ink+'" stroke-width="1.2"/>'
         +'<line x1="'+x+'" y1="'+yTop+'" x2="'+(x+4)+'" y2="'+yTop+'" stroke="'+MEP.ink+'" stroke-width="1.2"/>'
         +'<line x1="'+x+'" y1="'+yBot+'" x2="'+(x+4)+'" y2="'+yBot+'" stroke="'+MEP.ink+'" stroke-width="1.2"/>'
@@ -2385,7 +2509,7 @@
     // ---- repères de saut + zones cliquables (poser/enlever ⏎ / ⤓) ----
     const eb=effectiveBreaks();
     const ranges=measureXRanges(sys);
-    const contentH=Math.max(STAFF, sys.height-MEP.systemGap);
+    const contentH=Math.max(STAFF, sys.height);
     sys.mIdxs.forEach(mi=>{
       const r=ranges[mi]; if(!r)return;
       // zone cliquable : toute la mesure (sauf la toute dernière mesure du morceau)
@@ -2424,21 +2548,21 @@
     if(!W.trim())return [];
     return W.replace(/\s+$/,'').split('\n');
   }
-  const WORDS_FS=12;                         // taille des paroles finales (« plus gros » que les paroles alignées ~9px)
+  function wordsFS(){ return MEP.wordsSize||12; }   // taille des paroles finales W: (réglable)
   // une ligne W: du fichier = une ligne affichée (pas de renvoi automatique)
   function wordsPhysicalLines(){ return wordsRawLines(); }
-  function wordsLineH(){ return Math.round(WORDS_FS*1.35); }
+  function wordsLineH(){ return Math.round(wordsFS()*1.35); }
   function wordsBlockHeightUnits(){
     const n=wordsPhysicalLines().length; if(!n)return 0;
     return 18 + n*wordsLineH() + 6;
   }
   function renderWordsSvg(yTop){
     const lines=wordsPhysicalLines(); if(!lines.length)return '';
-    const lh=wordsLineH();
-    let svg='<line x1="'+LEFT_PAD+'" y1="'+(yTop+6)+'" x2="'+(MEP._SCORE_W-RIGHT_PAD)+'" y2="'+(yTop+6)+'" stroke="'+MEP.dim+'" stroke-width="0.5"/>';
-    let y=yTop+16+WORDS_FS;
+    const lh=wordsLineH(); const fs=wordsFS(); const xL=LEFT_PAD+(MEP.wordsLeft||0);
+    let svg='<line x1="'+xL+'" y1="'+(yTop+6)+'" x2="'+(MEP._SCORE_W-RIGHT_PAD)+'" y2="'+(yTop+6)+'" stroke="'+MEP.dim+'" stroke-width="0.5"/>';
+    let y=yTop+16+fs;
     lines.forEach(ln=>{
-      svg+='<text x="'+LEFT_PAD+'" y="'+y.toFixed(1)+'" xml:space="preserve" font-size="'+WORDS_FS+'" font-family="ui-monospace,Menlo,Consolas,monospace" fill="'+MEP.ink+'">'+escXml(ln)+'</text>';
+      svg+='<text x="'+xL+'" y="'+y.toFixed(1)+'" xml:space="preserve" font-size="'+fs+'" font-family="ui-monospace,Menlo,Consolas,monospace" fill="'+MEP.ink+'">'+escXml(ln)+'</text>';
       y+=lh;
     });
     return svg;
@@ -2468,15 +2592,17 @@
     // éléments à paginer : les systèmes, puis (éventuellement) le bloc W: final
     const items=systems.map(s=>({type:'system',sys:s,height:s.height,hardPage:!!s.hardPage}));
     const wH=wordsBlockHeightUnits();
-    if(wH>0)items.push({type:'words',height:wH});
+    if(wH>0 && MEP.showWords!==false)items.push({type:'words',height:wH+Math.max(0,MEP.wordsOffset||0)});
 
     const pages=[]; let cur=[], used=0, isFirst=true, pendingPageBreak=false;
     items.forEach(it=>{
       const cap=isFirst?maxUnitsPage1:maxUnitsPageN;
-      if(cur.length>0 && (used+it.height>cap || pendingPageBreak)){
-        pages.push({items:cur, isFirst}); isFirst=false; cur=[]; used=0;
+      // écart avant ce bloc s'il rejoint une page déjà entamée
+      let gap = cur.length>0 ? (it.type==='system' ? MEP.systemGap : 14) : 0;
+      if(cur.length>0 && (used+gap+it.height>cap || pendingPageBreak)){
+        pages.push({items:cur, isFirst}); isFirst=false; cur=[]; used=0; gap=0;
       }
-      cur.push(it); used+=it.height;
+      cur.push(Object.assign({gapBefore:gap}, it)); used+=gap+it.height;
       pendingPageBreak = !!it.hardPage;   // saut de page APRÈS ce système
     });
     if(cur.length>0)pages.push({items:cur, isFirst});
@@ -2525,28 +2651,29 @@
     const {pages, usableW_mm}=built;
     const html=[];
     pages.forEach((pg,pi)=>{
-      // hauteur du contenu de cette page (unités)
-      let contentH=pg.items.reduce((a,it)=>a+it.height,0);
       let topOffset=0, titleSvg='';
-      if(pg.isFirst){ titleSvg=renderTitleSvg(); topOffset=titleBlockHeightUnits(); contentH+=topOffset; }
+      if(pg.isFirst){ titleSvg=renderTitleSvg(); topOffset=titleBlockHeightUnits(); }
       // composer le SVG de page
       let inner='';
       if(titleSvg)inner+=titleSvg;
       let y=topOffset;
       pg.items.forEach(it=>{
+        y += it.gapBefore||0;
         if(it.type==='system'){ inner+='<g transform="translate(0,'+y+')">'+renderSystem(it.sys)+'</g>'; }
-        else if(it.type==='words'){ inner+=renderWordsSvg(y); }
+        else if(it.type==='words'){ inner+=renderWordsSvg(y+Math.max(0,MEP.wordsOffset||0)); }
         y+=it.height;
       });
-      const vbH=contentH;
+      const vbH=y+8;   // bas réel du contenu + petite marge (évite la troncature)
       const lz=MEP._labelZone||0;
       const pageSvg='<svg class="mep-svg" viewBox="'+(-lz)+' 0 '+(MEP._SCORE_W+lz)+' '+vbH+'" xmlns="http://www.w3.org/2000/svg" '
         +'style="width:'+usableW_mm+'mm;" preserveAspectRatio="xMinYMin meet">'+inner+'</svg>';
       const mainTitle=(state.headers.T||'').split('\n')[0].trim();
+      const ver=(MEP._scoreVersion||'').trim();
+      const verSpan = ver ? '<span class="fv">v '+escXml(ver)+'</span>' : '';
       html.push(
         '<div class="mep-page">'
         +'<div class="mep-pagebody" style="padding:'+MEP.marginMM+'mm;">'+pageSvg+'</div>'
-        +'<div class="mep-folio" style="padding:0 '+MEP.marginMM+'mm;"><span class="ft">'+escXml(mainTitle)+'</span><span class="fn">'+(pi+1)+' / '+pages.length+'</span></div>'
+        +'<div class="mep-folio" style="padding:0 '+MEP.marginMM+'mm;"><span class="ft">'+escXml(mainTitle)+'</span><span class="fn">'+verSpan+'<span>'+(pi+1)+' / '+pages.length+'</span></span></div>'
         +'</div>'
       );
     });
@@ -2559,7 +2686,8 @@
           const mi=parseInt(cell.getAttribute('data-mi'),10);
           const eb=effectiveBreaks();
           const cur=eb[mi]?(eb[mi].page?'page':'line'):'none';
-          const next= cur==='none'?'line':(cur==='line'?'page':'none');
+          const mode=(MEP.breakMode==='page')?'page':'line';
+          const next=(cur===mode)?'none':mode;   // bascule le type sélectionné
           MEP.userBreaks=MEP.userBreaks||{}; MEP.userBreaks[mi]=next;
           renderPages();
         });
@@ -2573,6 +2701,8 @@
   //  Chargement ABC
   // =====================================================================
   function loadAbcText(text){
+    const vm=String(text).match(/^\s*%%\s*scoreversion\s+(\S+)/im);
+    MEP._scoreVersion = vm ? vm[1] : '';
     MEP._tunes=splitTunesSmart(text);
     MEP._tuneIdx=0;
     return loadTuneByIndex(0);
@@ -2619,7 +2749,11 @@
     state.tempoBeatDotted=!!ns.tempoBeatDotted;
     state.tempoChanges=ns.tempoChanges||{};
     state.breaks=ns.breaks||{};
-    MEP.userBreaks={};   // sauts manuels remis à zéro (indices de mesure spécifiques au morceau)
+    // carte stable des noms de parties (P:) — fusionnée depuis toutes les pistes, pour rester
+    // affichée même si la 1re voix (qui porte généralement les P:) est masquée.
+    MEP._parts={};
+    (ns.tracks||[]).forEach(tr=>{ if(tr.parts)Object.keys(tr.parts).forEach(k=>{ if(MEP._parts[k]===undefined)MEP._parts[k]=tr.parts[k]; }); });
+    // les sauts manuels (MEP.userBreaks) sont conservés ; seul le bouton « Réinitialiser les sauts » les efface
     // lignes W: BRUTES (le parseur rogne les espaces ; on garde l'alignement d'origine)
     MEP._words=[];
     tune.abc.split(/\r?\n/).forEach(l=>{ const m=l.match(/^\s*W:(.*)$/); if(m)MEP._words.push(m[1].replace(/^ /,'')); });
@@ -2645,10 +2779,13 @@
   function buildVoiceToggles(){
     const box=document.getElementById('mep-voices'); if(!box)return;
     box.innerHTML='';
+    MEP.lyricOffsets=MEP.lyricOffsets||{};
+    const hint=document.createElement('p'); hint.className='mep-hint'; hint.textContent='− / + : hauteur des paroles de la voix (descendre/remonter).';
+    box.appendChild(hint);
     state.tracks.forEach((t,i)=>{
-      const id='mepv'+i;
-      const lab=document.createElement('label'); lab.className='mep-chk';
-      const cb=document.createElement('input'); cb.type='checkbox'; cb.id=id; cb.checked=MEP.visible.includes(i);
+      const row=document.createElement('div'); row.className='mep-row mep-stepper';
+      const lab=document.createElement('label'); lab.className='mep-chk'; lab.style.flex='1'; lab.style.padding='0';
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.id='mepv'+i; cb.checked=MEP.visible.includes(i);
       cb.addEventListener('change',()=>{
         if(cb.checked){ if(!MEP.visible.includes(i)){MEP.visible.push(i); MEP.visible.sort((a,b)=>a-b);} }
         else MEP.visible=MEP.visible.filter(x=>x!==i);
@@ -2657,7 +2794,16 @@
       lab.appendChild(cb);
       const sp=document.createElement('span'); sp.textContent=(t.name||('V'+(i+1)));
       lab.appendChild(sp);
-      box.appendChild(lab);
+      row.appendChild(lab);
+      if(MEP.lyricOffsets[i]===undefined)MEP.lyricOffsets[i]=0;
+      const minus=document.createElement('button'); minus.className='mep-step'; minus.type='button'; minus.textContent='−'; minus.title='Remonter les paroles';
+      const val=document.createElement('span'); val.className='val'; val.textContent=MEP.lyricOffsets[i];
+      const plus=document.createElement('button'); plus.className='mep-step'; plus.type='button'; plus.textContent='+'; plus.title='Descendre les paroles';
+      const set=(d)=>{ MEP.lyricOffsets[i]=Math.max(-20,Math.min(60,(MEP.lyricOffsets[i]||0)+d)); val.textContent=MEP.lyricOffsets[i]; renderPages(); };
+      minus.addEventListener('click',()=>set(-1));
+      plus.addEventListener('click',()=>set(1));
+      row.appendChild(minus); row.appendChild(val); row.appendChild(plus);
+      box.appendChild(row);
     });
   }
 
@@ -2668,6 +2814,17 @@
   }
 
   function bindUI(){
+    // lignes à steppers : libellé extensible pour aligner les boutons −/+ à droite
+    document.querySelectorAll('.mep-row').forEach(r=>{ if(r.querySelector('.mep-step'))r.classList.add('mep-stepper'); });
+    // sections dépliables : envelopper le contenu après le <h2> et basculer au clic
+    document.querySelectorAll('.mep-sec').forEach(sec=>{
+      const h=sec.querySelector('h2'); if(!h||h.classList.contains('mep-sechead'))return;
+      const body=document.createElement('div'); body.className='mep-secbody';
+      while(h.nextSibling)body.appendChild(h.nextSibling);
+      sec.appendChild(body);
+      h.classList.add('mep-sechead');
+      h.addEventListener('click',()=>sec.classList.toggle('collapsed'));
+    });
     const fileInput=document.getElementById('mep-file');
     fileInput.addEventListener('change',e=>{
       const f=e.target.files[0]; if(!f)return;
@@ -2675,6 +2832,7 @@
       const r=new FileReader();
       r.onload=()=>{
         document.getElementById('mep-abc').value=r.result;
+        MEP.userBreaks={};   // à l'ouverture d'un fichier : on repart des sauts ($) du fichier
         try{ if(loadAbcText(r.result))renderPages(); }
         catch(err){ alert('Erreur de lecture du fichier ABC : '+err.message); }
         // réinitialise pour permettre de recharger le même fichier
@@ -2699,23 +2857,28 @@
         if(out)document.getElementById(out).textContent=fmt?fmt(MEP[prop]):MEP[prop];
         renderPages(); });
     };
-    bindRange('mep-scale','scale','mep-scale-val',v=>v+'%');
-    bindRange('mep-margin','marginMM','mep-margin-val',v=>v+' mm');
+    // Taille (60–160%) et Marges (8–28 mm) en boutons −5 −1 +1 +5
+    const scaleVal=document.getElementById('mep-scale-val');
+    const setScale=(d)=>{ MEP.scale=Math.max(60,Math.min(160,MEP.scale+d));
+      if(scaleVal)scaleVal.textContent=MEP.scale+'%'; renderPages(); };
+    [['mep-scale-m5',-5],['mep-scale-m1',-1],['mep-scale-p1',1],['mep-scale-p5',5]].forEach(([id,d])=>{
+      const b=document.getElementById(id); if(b)b.addEventListener('click',()=>setScale(d)); });
+    const marginVal=document.getElementById('mep-margin-val');
+    const setMargin=(d)=>{ MEP.marginMM=Math.max(6,Math.min(30,MEP.marginMM+d));
+      if(marginVal)marginVal.textContent=MEP.marginMM+' mm'; renderPages(); };
+    [['mep-margin-m5',-5],['mep-margin-m1',-1],['mep-margin-p1',1],['mep-margin-p5',5]].forEach(([id,d])=>{
+      const b=document.getElementById(id); if(b)b.addEventListener('click',()=>setMargin(d)); });
     document.getElementById('mep-mps').addEventListener('change',e=>{ MEP.measuresPerSystem=parseInt(e.target.value,10)||0; renderPages(); });
 
     const bindChk=(id,prop)=>{ const el=document.getElementById(id);
       el.addEventListener('change',()=>{ MEP[prop]=el.checked; renderPages(); }); };
     bindChk('mep-lyrics','showLyrics');
     bindChk('mep-chords','showChords');
-    bindChk('mep-nums','showMeasureNums');
     bindChk('mep-justify','justify');
-
-    // espacement vertical des paroles (+/-, pas de 1)
-    const lyVal=document.getElementById('mep-ly-val');
-    const setLy=(d)=>{ MEP.lyricOffset=Math.max(-8,Math.min(40,MEP.lyricOffset+d));
-      if(lyVal)lyVal.textContent=MEP.lyricOffset; renderPages(); };
-    const lm=document.getElementById('mep-ly-minus'); if(lm)lm.addEventListener('click',()=>setLy(-1));
-    const lp=document.getElementById('mep-ly-plus'); if(lp)lp.addEventListener('click',()=>setLy(1));
+    // numéros de mesure : menu aucun / début de ligne / toutes
+    const numsSel=document.getElementById('mep-nums');
+    if(numsSel)numsSel.addEventListener('change',()=>{ const v=numsSel.value;
+      MEP.showMeasureNums=(v!=='none'); MEP.measureNumMode=(v==='first')?'first':'all'; renderPages(); });
 
     // écart vertical entre voix (+/-, pas de 1, peut être négatif)
     const vgVal=document.getElementById('mep-vg-val');
@@ -2738,9 +2901,66 @@
     const sm=document.getElementById('mep-sg-minus'); if(sm)sm.addEventListener('click',()=>setSg(-1));
     const sp=document.getElementById('mep-sg-plus'); if(sp)sp.addEventListener('click',()=>setSg(1));
 
+    // hauteur au-dessus de la portée (voltas / accords / ornements)
+    const abVal=document.getElementById('mep-ab-val');
+    const setAb=(d)=>{ MEP.aboveOffset=Math.max(-16,Math.min(40,MEP.aboveOffset+d));
+      if(abVal)abVal.textContent=MEP.aboveOffset; renderPages(); };
+    const abm=document.getElementById('mep-ab-minus'); if(abm)abm.addEventListener('click',()=>setAb(-1));
+    const abp=document.getElementById('mep-ab-plus'); if(abp)abp.addEventListener('click',()=>setAb(1));
+
+    // taille de police des paroles alignées w:
+    const lysVal=document.getElementById('mep-lys-val');
+    const setLys=(d)=>{ MEP.lyricSize=Math.max(6,Math.min(16,MEP.lyricSize+d));
+      if(lysVal)lysVal.textContent=MEP.lyricSize; renderPages(); };
+    const lysm=document.getElementById('mep-lys-minus'); if(lysm)lysm.addEventListener('click',()=>setLys(-1));
+    const lysp=document.getElementById('mep-lys-plus'); if(lysp)lysp.addEventListener('click',()=>setLys(1));
+
+    // taille de police des accords
+    const chsVal=document.getElementById('mep-chs-val');
+    const setChs=(d)=>{ MEP.chordSize=Math.max(6,Math.min(16,MEP.chordSize+d));
+      if(chsVal)chsVal.textContent=MEP.chordSize; renderPages(); };
+    const chsm=document.getElementById('mep-chs-minus'); if(chsm)chsm.addEventListener('click',()=>setChs(-1));
+    const chsp=document.getElementById('mep-chs-plus'); if(chsp)chsp.addEventListener('click',()=>setChs(1));
+
+    // taille de police des annotations texte
+    const txsVal=document.getElementById('mep-txs-val');
+    const setTxs=(d)=>{ MEP.textSize=Math.max(5,Math.min(14,MEP.textSize+d));
+      if(txsVal)txsVal.textContent=MEP.textSize; renderPages(); };
+    const txsm=document.getElementById('mep-txs-minus'); if(txsm)txsm.addEventListener('click',()=>setTxs(-1));
+    const txsp=document.getElementById('mep-txs-plus'); if(txsp)txsp.addEventListener('click',()=>setTxs(1));
+
+    // taille de police du bloc de paroles finales W:
+    const wsVal=document.getElementById('mep-ws-val');
+    const setWs=(d)=>{ MEP.wordsSize=Math.max(7,Math.min(20,MEP.wordsSize+d));
+      if(wsVal)wsVal.textContent=MEP.wordsSize; renderPages(); };
+    const wsm=document.getElementById('mep-ws-minus'); if(wsm)wsm.addEventListener('click',()=>setWs(-1));
+    const wsp=document.getElementById('mep-ws-plus'); if(wsp)wsp.addEventListener('click',()=>setWs(1));
+
+    // afficher ou non le bloc de paroles finales W:
+    const wchk=document.getElementById('mep-words');
+    if(wchk)wchk.addEventListener('change',()=>{ MEP.showWords=wchk.checked; renderPages(); });
+
+    // position verticale de la zone W:
+    const woVal=document.getElementById('mep-wo-val');
+    const setWo=(d)=>{ MEP.wordsOffset=Math.max(0,Math.min(120,MEP.wordsOffset+d));
+      if(woVal)woVal.textContent=MEP.wordsOffset; renderPages(); };
+    const wom=document.getElementById('mep-wo-minus'); if(wom)wom.addEventListener('click',()=>setWo(-1));
+    const wop=document.getElementById('mep-wo-plus'); if(wop)wop.addEventListener('click',()=>setWo(1));
+
+    // marge de gauche de la zone W:
+    const wlVal=document.getElementById('mep-wl-val');
+    const setWl=(d)=>{ MEP.wordsLeft=Math.max(-120,Math.min(200,MEP.wordsLeft+d));
+      if(wlVal)wlVal.textContent=MEP.wordsLeft; renderPages(); };
+    const wlm=document.getElementById('mep-wl-minus'); if(wlm)wlm.addEventListener('click',()=>setWl(-1));
+    const wlp=document.getElementById('mep-wl-plus'); if(wlp)wlp.addEventListener('click',()=>setWl(1));
+
     // mode « poser/enlever les sauts en cliquant »
     const eb=document.getElementById('mep-editbrk');
-    if(eb)eb.addEventListener('change',()=>{ MEP.editBreaks=eb.checked; renderPages(); });
+    const brkRow=document.getElementById('mep-brkmode-row');
+    if(eb)eb.addEventListener('change',()=>{ MEP.editBreaks=eb.checked; if(brkRow)brkRow.style.display=eb.checked?'flex':'none'; renderPages(); });
+    const brkLine=document.getElementById('mep-brk-line'), brkPage=document.getElementById('mep-brk-page');
+    if(brkLine)brkLine.addEventListener('change',()=>{ if(brkLine.checked)MEP.breakMode='line'; });
+    if(brkPage)brkPage.addEventListener('change',()=>{ if(brkPage.checked)MEP.breakMode='page'; });
     const rb=document.getElementById('mep-resetbrk');
     if(rb)rb.addEventListener('click',()=>{ MEP.userBreaks={}; renderPages(); });
 
@@ -2758,7 +2978,7 @@
   // init
   bindUI();
   updateMepBadge();
-  function updateMepBadge(){ const b=document.getElementById('mep-ver'); if(b)b.textContent='v1.13'; }
+  function updateMepBadge(){ const b=document.getElementById('mep-ver'); if(b)b.textContent='v1.20'; }
 
 })();
 </script>
