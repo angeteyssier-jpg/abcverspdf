@@ -19,6 +19,12 @@
   .mep-sec{ border:1px solid var(--line); border-radius:8px; background:#fff; padding:10px; margin-bottom:10px; }
   .mep-sec h2{ font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:#5f5e5a; margin:0 0 8px; }
   .mep-row{ display:flex; align-items:center; gap:8px; margin:6px 0; font-size:13px; }
+  .mep-sec h2{ position:relative; }
+  .mep-apply{ position:absolute; right:22px; top:50%; transform:translateY(-50%);
+    font-size:11px; padding:2px 9px; border:1px solid var(--line); border-radius:5px;
+    background:#fff; color:#777; cursor:pointer; font-weight:600; }
+  .mep-apply:hover{ background:#f0eee5; }
+  .mep-apply.mep-apply-on{ background:#185fa5; color:#fff; border-color:#185fa5; }
   .mep-row label{ flex:0 0 auto; }
   .mep-row.mep-stepper label{ flex:1 1 auto; }
   .mep-row.mep-stepper .val{ min-width:34px; text-align:center; }
@@ -77,7 +83,7 @@
 <div class="mep-wrap">
   <aside class="mep-panel">
     <h1>Mise en page ABC</h1>
-    <span class="mep-badge">A4 — <b id="mep-ver">v1.20</b></span>
+    <span class="mep-badge">A4 — <b id="mep-ver">v1.21</b></span>
 
     <div class="mep-sec">
       <h2>Partition</h2>
@@ -132,6 +138,7 @@
 
     <div class="mep-sec">
       <h2>Voix</h2>
+      <label class="mep-chk"><input type="checkbox" id="mep-hideempty"> Masquer les portées vides (silencieuses) par système</label>
       <div id="mep-voices"></div>
     </div>
 
@@ -2309,7 +2316,8 @@
     userBreaks:{},        // sauts posés/retirés à la main : index mesure -> 'line'|'page'|'none'
     editBreaks:false,     // mode : cliquer une mesure pour poser/enlever un saut
     breakMode:'line',     // type de saut posé au clic : 'line' ou 'page' (ligne par défaut)
-    visible:[],           // index des voix affichées
+    visible:[],
+    hideEmptyStaves:false, // masquer les portées entièrement silencieuses sur un système           // index des voix affichées
     _tunes:[], _tuneIdx:0, _words:[], // morceaux détectés + lignes W: brutes
     _SCORE_W:760, _usableLineW:704, _staffRight:undefined, _isTopVoice:true,
     fileName:'Partition'
@@ -2366,8 +2374,22 @@
     const below = Math.max(lyrBelow, voiceLowExtent(ti));
     return aboveSpace() + STAFF + below;
   }
-  function systemH(){
-    let h=0; MEP.visible.forEach((ti,k)=>{ h+=voiceBlockH(ti); if(k<MEP.visible.length-1)h+=MEP.voiceGap; });
+  // une voix a-t-elle au moins une note (hors silence) dans ces mesures ?
+  function voiceHasNotes(ti, mIdxs){
+    const tr=state.tracks[ti]; if(!tr||!tr.measures)return false;
+    for(let k=0;k<mIdxs.length;k++){ const m=tr.measures[mIdxs[k]]; if(!m)continue;
+      for(let j=0;j<m.length;j++){ if(m[j]&&m[j].type==='note')return true; } }
+    return false;
+  }
+  // voix à afficher sur un système : toutes les voix visibles, ou seulement celles qui chantent
+  function systemVoices(sys){
+    if(!MEP.hideEmptyStaves)return MEP.visible.slice();
+    const v=MEP.visible.filter(ti=>voiceHasNotes(ti, sys.mIdxs));
+    return v.length?v:MEP.visible.slice();   // ne jamais afficher 0 portée
+  }
+  function systemH(voices){
+    voices=voices||MEP.visible;
+    let h=0; voices.forEach((ti,k)=>{ h+=voiceBlockH(ti); if(k<voices.length-1)h+=MEP.voiceGap; });
     return h;   // hauteur de contenu (sans l'écart entre systèmes)
   }
 
@@ -2469,7 +2491,8 @@
       sys.mIdxs.forEach(mi=>{ const w=widths[mi]*sc; widthUnits[mi]=w; right+=w; });
       sys.layout={firstX, widthUnits};
       sys.rightEdge=right;     // bord droit réel (dernière barre)
-      sys.height=systemH();
+      sys.voices=systemVoices(sys);
+      sys.height=systemH(sys.voices);
     });
     return systems;
   }
@@ -2478,8 +2501,9 @@
   function renderSystem(sys){
     let svg='';
     let y=aboveSpace();                // sommet de la 1re portée
-    const topVi=MEP.visible.length?MEP.visible[0]:0;
-    MEP.visible.forEach((ti,k)=>{
+    const voices=sys.voices&&sys.voices.length?sys.voices:MEP.visible;
+    const topVi=voices.length?voices[0]:0;
+    voices.forEach((ti,k)=>{
       const staffTop=y;
       state.activeTrack=ti;
       MEP._staffRight=sys.rightEdge;
@@ -2498,9 +2522,9 @@
       y += voiceBlockH(ti) + MEP.voiceGap;
     });
     // accolade reliant les voix d'un système (SATB), à gauche des clés
-    if(MEP.visible.length>1){
+    if(voices.length>1){
       const x=LEFT_PAD-42;
-      const yTop=aboveSpace(), yBot=y-MEP.voiceGap-voiceBlockHBottom();
+      const yTop=aboveSpace(), yBot=y-MEP.voiceGap-(voiceBlockH(voices[voices.length-1])-STAFF);
       svg='<line x1="'+x+'" y1="'+yTop+'" x2="'+x+'" y2="'+yBot+'" stroke="'+MEP.ink+'" stroke-width="1.2"/>'
         +'<line x1="'+x+'" y1="'+yTop+'" x2="'+(x+4)+'" y2="'+yTop+'" stroke="'+MEP.ink+'" stroke-width="1.2"/>'
         +'<line x1="'+x+'" y1="'+yBot+'" x2="'+(x+4)+'" y2="'+yBot+'" stroke="'+MEP.ink+'" stroke-width="1.2"/>'
@@ -2789,7 +2813,7 @@
       cb.addEventListener('change',()=>{
         if(cb.checked){ if(!MEP.visible.includes(i)){MEP.visible.push(i); MEP.visible.sort((a,b)=>a-b);} }
         else MEP.visible=MEP.visible.filter(x=>x!==i);
-        renderPages();
+        commit('Voix');
       });
       lab.appendChild(cb);
       const sp=document.createElement('span'); sp.textContent=(t.name||('V'+(i+1)));
@@ -2799,7 +2823,7 @@
       const minus=document.createElement('button'); minus.className='mep-step'; minus.type='button'; minus.textContent='−'; minus.title='Remonter les paroles';
       const val=document.createElement('span'); val.className='val'; val.textContent=MEP.lyricOffsets[i];
       const plus=document.createElement('button'); plus.className='mep-step'; plus.type='button'; plus.textContent='+'; plus.title='Descendre les paroles';
-      const set=(d)=>{ MEP.lyricOffsets[i]=Math.max(-20,Math.min(60,(MEP.lyricOffsets[i]||0)+d)); val.textContent=MEP.lyricOffsets[i]; renderPages(); };
+      const set=(d)=>{ MEP.lyricOffsets[i]=Math.max(-20,Math.min(60,(MEP.lyricOffsets[i]||0)+d)); val.textContent=MEP.lyricOffsets[i]; commit('Voix'); };
       minus.addEventListener('click',()=>set(-1));
       plus.addEventListener('click',()=>set(1));
       row.appendChild(minus); row.appendChild(val); row.appendChild(plus);
@@ -2813,16 +2837,34 @@
     setTimeout(()=>document.body.classList.remove('mep-printing'),300);
   }
 
+  // sections dont les réglages sont différés : ils ne se ré-affichent qu'au clic sur « Appliquer »
+  const APPLY_SECTIONS=['Notes','Voix','Espacements','Paroles','Affichage'];
+  function commit(section){
+    if(APPLY_SECTIONS.indexOf(section)>=0){
+      const b=document.querySelector('.mep-apply[data-sec="'+section+'"]');
+      if(b)b.classList.add('mep-apply-on');   // marque « à appliquer », sans ré-afficher
+    } else renderPages();
+  }
   function bindUI(){
     // lignes à steppers : libellé extensible pour aligner les boutons −/+ à droite
     document.querySelectorAll('.mep-row').forEach(r=>{ if(r.querySelector('.mep-step'))r.classList.add('mep-stepper'); });
     // sections dépliables : envelopper le contenu après le <h2> et basculer au clic
     document.querySelectorAll('.mep-sec').forEach(sec=>{
       const h=sec.querySelector('h2'); if(!h||h.classList.contains('mep-sechead'))return;
+      const title=h.textContent.trim();
       const body=document.createElement('div'); body.className='mep-secbody';
       while(h.nextSibling)body.appendChild(h.nextSibling);
       sec.appendChild(body);
       h.classList.add('mep-sechead');
+      // bouton « Appliquer » pour les sections différées
+      if(APPLY_SECTIONS.indexOf(title)>=0){
+        const ab=document.createElement('button'); ab.className='mep-apply'; ab.type='button';
+        ab.setAttribute('data-sec',title); ab.textContent='Appliquer';
+        ab.addEventListener('click',(e)=>{ e.stopPropagation();
+          document.querySelectorAll('.mep-apply').forEach(x=>x.classList.remove('mep-apply-on'));
+          renderPages(); });          // applique TOUS les réglages en attente
+        h.appendChild(ab);
+      }
       h.addEventListener('click',()=>sec.classList.toggle('collapsed'));
     });
     const fileInput=document.getElementById('mep-file');
@@ -2870,87 +2912,90 @@
       const b=document.getElementById(id); if(b)b.addEventListener('click',()=>setMargin(d)); });
     document.getElementById('mep-mps').addEventListener('change',e=>{ MEP.measuresPerSystem=parseInt(e.target.value,10)||0; renderPages(); });
 
-    const bindChk=(id,prop)=>{ const el=document.getElementById(id);
-      el.addEventListener('change',()=>{ MEP[prop]=el.checked; renderPages(); }); };
-    bindChk('mep-lyrics','showLyrics');
-    bindChk('mep-chords','showChords');
-    bindChk('mep-justify','justify');
+    const bindChk=(id,prop,section)=>{ const el=document.getElementById(id);
+      el.addEventListener('change',()=>{ MEP[prop]=el.checked; commit(section); }); };
+    bindChk('mep-lyrics','showLyrics','Paroles');
+    bindChk('mep-chords','showChords','Affichage');
+    bindChk('mep-justify','justify','Notes');
+    // masquer les portées entièrement silencieuses par système
+    const hev=document.getElementById('mep-hideempty');
+    if(hev)hev.addEventListener('change',()=>{ MEP.hideEmptyStaves=hev.checked; commit('Voix'); });
     // numéros de mesure : menu aucun / début de ligne / toutes
     const numsSel=document.getElementById('mep-nums');
     if(numsSel)numsSel.addEventListener('change',()=>{ const v=numsSel.value;
-      MEP.showMeasureNums=(v!=='none'); MEP.measureNumMode=(v==='first')?'first':'all'; renderPages(); });
+      MEP.showMeasureNums=(v!=='none'); MEP.measureNumMode=(v==='first')?'first':'all'; commit('Affichage'); });
 
     // écart vertical entre voix (+/-, pas de 1, peut être négatif)
     const vgVal=document.getElementById('mep-vg-val');
     const setVg=(d)=>{ MEP.voiceGap=Math.max(-30,Math.min(60,MEP.voiceGap+d));
-      if(vgVal)vgVal.textContent=MEP.voiceGap; renderPages(); };
+      if(vgVal)vgVal.textContent=MEP.voiceGap; commit('Espacements'); };
     const vm=document.getElementById('mep-vg-minus'); if(vm)vm.addEventListener('click',()=>setVg(-1));
     const vp=document.getElementById('mep-vg-plus'); if(vp)vp.addEventListener('click',()=>setVg(1));
 
     // espacement horizontal des notes (+/-, pas de 1, négatif = serré)
     const nsVal=document.getElementById('mep-ns-val');
     const setNs=(d)=>{ MEP.noteSpacing=Math.max(-12,Math.min(24,MEP.noteSpacing+d));
-      if(nsVal)nsVal.textContent=MEP.noteSpacing; renderPages(); };
+      if(nsVal)nsVal.textContent=MEP.noteSpacing; commit('Notes'); };
     const nm=document.getElementById('mep-ns-minus'); if(nm)nm.addEventListener('click',()=>setNs(-1));
     const np=document.getElementById('mep-ns-plus'); if(np)np.addEventListener('click',()=>setNs(1));
 
     // écart vertical entre systèmes (+/-, pas de 1, peut être négatif)
     const sgVal=document.getElementById('mep-sg-val');
     const setSg=(d)=>{ MEP.systemGap=Math.max(-20,Math.min(80,MEP.systemGap+d));
-      if(sgVal)sgVal.textContent=MEP.systemGap; renderPages(); };
+      if(sgVal)sgVal.textContent=MEP.systemGap; commit('Espacements'); };
     const sm=document.getElementById('mep-sg-minus'); if(sm)sm.addEventListener('click',()=>setSg(-1));
     const sp=document.getElementById('mep-sg-plus'); if(sp)sp.addEventListener('click',()=>setSg(1));
 
     // hauteur au-dessus de la portée (voltas / accords / ornements)
     const abVal=document.getElementById('mep-ab-val');
     const setAb=(d)=>{ MEP.aboveOffset=Math.max(-16,Math.min(40,MEP.aboveOffset+d));
-      if(abVal)abVal.textContent=MEP.aboveOffset; renderPages(); };
+      if(abVal)abVal.textContent=MEP.aboveOffset; commit('Espacements'); };
     const abm=document.getElementById('mep-ab-minus'); if(abm)abm.addEventListener('click',()=>setAb(-1));
     const abp=document.getElementById('mep-ab-plus'); if(abp)abp.addEventListener('click',()=>setAb(1));
 
     // taille de police des paroles alignées w:
     const lysVal=document.getElementById('mep-lys-val');
     const setLys=(d)=>{ MEP.lyricSize=Math.max(6,Math.min(16,MEP.lyricSize+d));
-      if(lysVal)lysVal.textContent=MEP.lyricSize; renderPages(); };
+      if(lysVal)lysVal.textContent=MEP.lyricSize; commit('Paroles'); };
     const lysm=document.getElementById('mep-lys-minus'); if(lysm)lysm.addEventListener('click',()=>setLys(-1));
     const lysp=document.getElementById('mep-lys-plus'); if(lysp)lysp.addEventListener('click',()=>setLys(1));
 
     // taille de police des accords
     const chsVal=document.getElementById('mep-chs-val');
     const setChs=(d)=>{ MEP.chordSize=Math.max(6,Math.min(16,MEP.chordSize+d));
-      if(chsVal)chsVal.textContent=MEP.chordSize; renderPages(); };
+      if(chsVal)chsVal.textContent=MEP.chordSize; commit('Affichage'); };
     const chsm=document.getElementById('mep-chs-minus'); if(chsm)chsm.addEventListener('click',()=>setChs(-1));
     const chsp=document.getElementById('mep-chs-plus'); if(chsp)chsp.addEventListener('click',()=>setChs(1));
 
     // taille de police des annotations texte
     const txsVal=document.getElementById('mep-txs-val');
     const setTxs=(d)=>{ MEP.textSize=Math.max(5,Math.min(14,MEP.textSize+d));
-      if(txsVal)txsVal.textContent=MEP.textSize; renderPages(); };
+      if(txsVal)txsVal.textContent=MEP.textSize; commit('Affichage'); };
     const txsm=document.getElementById('mep-txs-minus'); if(txsm)txsm.addEventListener('click',()=>setTxs(-1));
     const txsp=document.getElementById('mep-txs-plus'); if(txsp)txsp.addEventListener('click',()=>setTxs(1));
 
     // taille de police du bloc de paroles finales W:
     const wsVal=document.getElementById('mep-ws-val');
     const setWs=(d)=>{ MEP.wordsSize=Math.max(7,Math.min(20,MEP.wordsSize+d));
-      if(wsVal)wsVal.textContent=MEP.wordsSize; renderPages(); };
+      if(wsVal)wsVal.textContent=MEP.wordsSize; commit('Paroles'); };
     const wsm=document.getElementById('mep-ws-minus'); if(wsm)wsm.addEventListener('click',()=>setWs(-1));
     const wsp=document.getElementById('mep-ws-plus'); if(wsp)wsp.addEventListener('click',()=>setWs(1));
 
     // afficher ou non le bloc de paroles finales W:
     const wchk=document.getElementById('mep-words');
-    if(wchk)wchk.addEventListener('change',()=>{ MEP.showWords=wchk.checked; renderPages(); });
+    if(wchk)wchk.addEventListener('change',()=>{ MEP.showWords=wchk.checked; commit('Paroles'); });
 
     // position verticale de la zone W:
     const woVal=document.getElementById('mep-wo-val');
     const setWo=(d)=>{ MEP.wordsOffset=Math.max(0,Math.min(120,MEP.wordsOffset+d));
-      if(woVal)woVal.textContent=MEP.wordsOffset; renderPages(); };
+      if(woVal)woVal.textContent=MEP.wordsOffset; commit('Paroles'); };
     const wom=document.getElementById('mep-wo-minus'); if(wom)wom.addEventListener('click',()=>setWo(-1));
     const wop=document.getElementById('mep-wo-plus'); if(wop)wop.addEventListener('click',()=>setWo(1));
 
     // marge de gauche de la zone W:
     const wlVal=document.getElementById('mep-wl-val');
     const setWl=(d)=>{ MEP.wordsLeft=Math.max(-120,Math.min(200,MEP.wordsLeft+d));
-      if(wlVal)wlVal.textContent=MEP.wordsLeft; renderPages(); };
+      if(wlVal)wlVal.textContent=MEP.wordsLeft; commit('Paroles'); };
     const wlm=document.getElementById('mep-wl-minus'); if(wlm)wlm.addEventListener('click',()=>setWl(-1));
     const wlp=document.getElementById('mep-wl-plus'); if(wlp)wlp.addEventListener('click',()=>setWl(1));
 
@@ -2978,7 +3023,7 @@
   // init
   bindUI();
   updateMepBadge();
-  function updateMepBadge(){ const b=document.getElementById('mep-ver'); if(b)b.textContent='v1.20'; }
+  function updateMepBadge(){ const b=document.getElementById('mep-ver'); if(b)b.textContent='v1.21'; }
 
 })();
 </script>
