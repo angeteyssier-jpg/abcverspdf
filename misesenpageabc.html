@@ -20,11 +20,6 @@
   .mep-sec h2{ font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:#5f5e5a; margin:0 0 8px; }
   .mep-row{ display:flex; align-items:center; gap:8px; margin:6px 0; font-size:13px; }
   .mep-sec h2{ position:relative; }
-  .mep-apply{ position:absolute; right:22px; top:50%; transform:translateY(-50%);
-    font-size:11px; padding:2px 9px; border:1px solid var(--line); border-radius:5px;
-    background:#fff; color:#777; cursor:pointer; font-weight:600; }
-  .mep-apply:hover{ background:#f0eee5; }
-  .mep-apply.mep-apply-on{ background:#185fa5; color:#fff; border-color:#185fa5; }
   .mep-row label{ flex:0 0 auto; }
   .mep-row.mep-stepper label{ flex:1 1 auto; }
   .mep-row.mep-stepper .val{ min-width:34px; text-align:center; }
@@ -83,7 +78,7 @@
 <div class="mep-wrap">
   <aside class="mep-panel">
     <h1>Mise en page ABC</h1>
-    <span class="mep-badge">A4 — <b id="mep-ver">v1.21</b></span>
+    <span class="mep-badge">A4 — <b id="mep-ver">v1.24</b></span>
 
     <div class="mep-sec">
       <h2>Partition</h2>
@@ -2408,7 +2403,7 @@
     return w;
   }
   function maxHeader(firstMi,isFirstDoc){
-    const saved=state.activeTrack; let h=20;
+    const saved=state.activeTrack; let h=2;   // plancher bas : laisse les lignes « clé seule » se resserrer
     MEP.visible.forEach(i=>{ state.activeTrack=i; h=Math.max(h,lineHeaderCost(firstMi,isFirstDoc)); });
     state.activeTrack=saved; return h;
   }
@@ -2582,7 +2577,12 @@
   }
   function renderWordsSvg(yTop){
     const lines=wordsPhysicalLines(); if(!lines.length)return '';
-    const lh=wordsLineH(); const fs=wordsFS(); const xL=LEFT_PAD+(MEP.wordsLeft||0);
+    const lh=wordsLineH(); const fs=wordsFS();
+    // base = marge gauche imprimable. Le bloc W: peut aller jusqu'à cette marge mais pas au-delà
+    // (sinon il serait coupé) ; il ne touche pas au cadre de la partition.
+    const baseX=-(MEP._labelZone||0);
+    let xL=baseX+(MEP.wordsLeft||0);
+    if(xL<baseX)xL=baseX;
     let svg='<line x1="'+xL+'" y1="'+(yTop+6)+'" x2="'+(MEP._SCORE_W-RIGHT_PAD)+'" y2="'+(yTop+6)+'" stroke="'+MEP.dim+'" stroke-width="0.5"/>';
     let y=yTop+16+fs;
     lines.forEach(ln=>{
@@ -2606,7 +2606,11 @@
     // zone à gauche pour l'accolade et les noms de voix (sinon rognés au bord du viewBox)
     const hasNames = MEP.visible.some(i=>((state.tracks[i]||{}).name||'').trim());
     MEP._labelZone = (MEP.visible.length>1 || hasNames) ? 46 : 0;
-    const totalW = MEP._SCORE_W + MEP._labelZone;
+    // bord gauche du cadre = marge imprimable, déterminée UNIQUEMENT par la partition
+    // (accolade + noms de voix). La marge W: ne touche plus au cadre de la partition.
+    const leftEdge = -MEP._labelZone;
+    MEP._leftEdge = leftEdge;
+    const totalW = MEP._SCORE_W - leftEdge;
     const mmPerUnit=usableW_mm/totalW;
     // hauteur dispo en unités, en réservant le bloc-titre sur la 1re page
     const maxUnitsPage1=(usableH_mm/mmPerUnit)-titleBlockHeightUnits();
@@ -2688,8 +2692,8 @@
         y+=it.height;
       });
       const vbH=y+8;   // bas réel du contenu + petite marge (évite la troncature)
-      const lz=MEP._labelZone||0;
-      const pageSvg='<svg class="mep-svg" viewBox="'+(-lz)+' 0 '+(MEP._SCORE_W+lz)+' '+vbH+'" xmlns="http://www.w3.org/2000/svg" '
+      const le=MEP._leftEdge||(-(MEP._labelZone||0));
+      const pageSvg='<svg class="mep-svg" viewBox="'+le+' 0 '+(MEP._SCORE_W-le)+' '+vbH+'" xmlns="http://www.w3.org/2000/svg" '
         +'style="width:'+usableW_mm+'mm;" preserveAspectRatio="xMinYMin meet">'+inner+'</svg>';
       const mainTitle=(state.headers.T||'').split('\n')[0].trim();
       const ver=(MEP._scoreVersion||'').trim();
@@ -2725,8 +2729,8 @@
   //  Chargement ABC
   // =====================================================================
   function loadAbcText(text){
-    const vm=String(text).match(/^\s*%%\s*scoreversion\s+(\S+)/im);
-    MEP._scoreVersion = vm ? vm[1] : '';
+    const vm=String(text).match(/^\s*%%\s*scoreversion\s+(.+?)\s*$/im);
+    MEP._scoreVersion = vm ? vm[1].trim() : '';
     MEP._tunes=splitTunesSmart(text);
     MEP._tuneIdx=0;
     return loadTuneByIndex(0);
@@ -2837,34 +2841,18 @@
     setTimeout(()=>document.body.classList.remove('mep-printing'),300);
   }
 
-  // sections dont les réglages sont différés : ils ne se ré-affichent qu'au clic sur « Appliquer »
-  const APPLY_SECTIONS=['Notes','Voix','Espacements','Paroles','Affichage'];
-  function commit(section){
-    if(APPLY_SECTIONS.indexOf(section)>=0){
-      const b=document.querySelector('.mep-apply[data-sec="'+section+'"]');
-      if(b)b.classList.add('mep-apply-on');   // marque « à appliquer », sans ré-afficher
-    } else renderPages();
-  }
+  // (aperçu instantané : tout réglage ré-affiche directement)
+  function commit(section){ renderPages(); }
   function bindUI(){
     // lignes à steppers : libellé extensible pour aligner les boutons −/+ à droite
     document.querySelectorAll('.mep-row').forEach(r=>{ if(r.querySelector('.mep-step'))r.classList.add('mep-stepper'); });
     // sections dépliables : envelopper le contenu après le <h2> et basculer au clic
     document.querySelectorAll('.mep-sec').forEach(sec=>{
       const h=sec.querySelector('h2'); if(!h||h.classList.contains('mep-sechead'))return;
-      const title=h.textContent.trim();
       const body=document.createElement('div'); body.className='mep-secbody';
       while(h.nextSibling)body.appendChild(h.nextSibling);
       sec.appendChild(body);
       h.classList.add('mep-sechead');
-      // bouton « Appliquer » pour les sections différées
-      if(APPLY_SECTIONS.indexOf(title)>=0){
-        const ab=document.createElement('button'); ab.className='mep-apply'; ab.type='button';
-        ab.setAttribute('data-sec',title); ab.textContent='Appliquer';
-        ab.addEventListener('click',(e)=>{ e.stopPropagation();
-          document.querySelectorAll('.mep-apply').forEach(x=>x.classList.remove('mep-apply-on'));
-          renderPages(); });          // applique TOUS les réglages en attente
-        h.appendChild(ab);
-      }
       h.addEventListener('click',()=>sec.classList.toggle('collapsed'));
     });
     const fileInput=document.getElementById('mep-file');
@@ -2906,7 +2894,7 @@
     [['mep-scale-m5',-5],['mep-scale-m1',-1],['mep-scale-p1',1],['mep-scale-p5',5]].forEach(([id,d])=>{
       const b=document.getElementById(id); if(b)b.addEventListener('click',()=>setScale(d)); });
     const marginVal=document.getElementById('mep-margin-val');
-    const setMargin=(d)=>{ MEP.marginMM=Math.max(6,Math.min(30,MEP.marginMM+d));
+    const setMargin=(d)=>{ MEP.marginMM=Math.max(0,Math.min(30,MEP.marginMM+d));
       if(marginVal)marginVal.textContent=MEP.marginMM+' mm'; renderPages(); };
     [['mep-margin-m5',-5],['mep-margin-m1',-1],['mep-margin-p1',1],['mep-margin-p5',5]].forEach(([id,d])=>{
       const b=document.getElementById(id); if(b)b.addEventListener('click',()=>setMargin(d)); });
@@ -3007,7 +2995,12 @@
     if(brkLine)brkLine.addEventListener('change',()=>{ if(brkLine.checked)MEP.breakMode='line'; });
     if(brkPage)brkPage.addEventListener('change',()=>{ if(brkPage.checked)MEP.breakMode='page'; });
     const rb=document.getElementById('mep-resetbrk');
-    if(rb)rb.addEventListener('click',()=>{ MEP.userBreaks={}; renderPages(); });
+    if(rb)rb.addEventListener('click',()=>{
+      MEP.userBreaks={};                       // sauts manuels
+      state.breaks={};                         // sauts ($) du morceau
+      state.tracks.forEach(t=>{ t.breaks={}; });// sauts ($) par voix
+      renderPages();
+    });
 
     document.getElementById('mep-sample').addEventListener('click',()=>{
       const ex=SAMPLE_ABC;
@@ -3023,7 +3016,7 @@
   // init
   bindUI();
   updateMepBadge();
-  function updateMepBadge(){ const b=document.getElementById('mep-ver'); if(b)b.textContent='v1.21'; }
+  function updateMepBadge(){ const b=document.getElementById('mep-ver'); if(b)b.textContent='v1.24'; }
 
 })();
 </script>
